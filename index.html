@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>T-Bank Elite Gold V3</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        body {
+            background-color: #050505;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .auth-container {
+            background: linear-gradient(145deg, #111, #080808);
+            padding: 50px;
+            border-radius: 20px;
+            text-align: center;
+            width: 400px;
+            border: 1px solid #222;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            color: #bfa330;
+            font-size: 28px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .version {
+            color: #444;
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            display: block;
+        }
+
+        input {
+            width: 100%;
+            padding: 18px;
+            margin: 12px 0;
+            border: 1px solid #222;
+            border-radius: 10px;
+            background-color: #1a1a1a;
+            color: #eee;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #7a6207;
+            background-color: #222;
+        }
+
+        /* Те самые красиво сделанные кнопки */
+        .gold-button {
+            width: 100%;
+            padding: 18px;
+            margin-top: 25px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(to bottom, #bfa330, #7a6207);
+            color: #000;
+            font-weight: 900;
+            font-size: 15px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(122, 98, 7, 0.3);
+            transition: 0.3s;
+        }
+
+        .gold-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(122, 98, 7, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .gold-button:active {
+            transform: translateY(1px);
+        }
+
+        .secondary-button {
+            background: #1a1a1a;
+            color: #888;
+            border: 1px solid #333;
+            margin-top: 10px;
+            padding: 12px;
+            font-size: 13px;
+        }
+
+        .secondary-button:hover {
+            background: #222;
+            color: #fff;
+            border-color: #bfa330;
+        }
+
+        .hidden { display: none; }
+
+        /* Стиль карты Gold V3 */
+        .card-preview {
+            background: linear-gradient(135deg, #1a1a1a 0%, #000 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid #333;
+            margin: 20px 0;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-preview::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(191,163,48,0.05) 0%, transparent 70%);
+        }
+
+        .card-chip {
+            width: 40px;
+            height: 30px;
+            background: linear-gradient(135deg, #7a6207, #bfa330);
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <h1>T-BANK CLOUD</h1>
+        <span class="version">ELITE GOLD EDITION V3</span>
+
+        <!-- ЭКРАН ВХОДА -->
+        <div id="login-screen">
+            <input type="text" id="name" placeholder="ИМЯ ПОЛЬЗОВАТЕЛЯ">
+            <input type="password" id="pin" placeholder="••••" maxlength="4">
+            <button class="gold-button" onclick="handleAuth()">ОТКРЫТЬ ЗОЛОТОЙ СЧЕТ</button>
+        </div>
+
+        <!-- ГЛАВНОЕ МЕНЮ -->
+        <div id="main-menu" class="hidden">
+            <h2 id="user-greeting" style="color: #bfa330; font-weight: 300;"></h2>
+            <button class="gold-button" onclick="showScreen('requisites-screen')">МОИ РЕКВИЗИТЫ</button>
+            <button class="gold-button" onclick="showScreen('settings-screen')">УПРАВЛЕНИЕ</button>
+            <button class="gold-button secondary-button" onclick="location.reload()">ВЫЙТИ ИЗ ОБЛАКА</button>
+        </div>
+
+        <!-- РЕКВИЗИТЫ -->
+        <div id="requisites-screen" class="hidden">
+            <div class="card-preview">
+                <div class="card-chip"></div>
+                <div id="card-num" style="color: #fff; font-size: 20px; letter-spacing: 3px; margin-bottom: 20px;"></div>
+                <div style="display: flex; justify-content: space-between; color: #bfa330; font-size: 12px; text-transform: uppercase;">
+                    <span id="card-holder"></span>
+                    <span id="card-exp"></span>
+                </div>
+            </div>
+            <input type="text" placeholder="НОМЕР КАРТЫ ПОЛУЧАТЕЛЯ">
+            <button class="gold-button" onclick="alert('СЕРВЕР ПЕРЕВОДОВ ВРЕМЕННО ПЕРЕГРУЖЕН')">ПОДТВЕРДИТЬ ПЕРЕВОД</button>
+            <button class="gold-button secondary-button" onclick="showScreen('main-menu')">ВЕРНУТЬСЯ</button>
+        </div>
+
+        <!-- НАСТРОЙКИ -->
+        <div id="settings-screen" class="hidden">
+            <input type="text" id="upd-name" placeholder="НОВОЕ ИМЯ">
+            <input type="password" id="upd-pin" placeholder="НОВЫЙ ПИН-КОД" maxlength="4">
+            <button class="gold-button" onclick="updateData()">ОБНОВИТЬ ДАННЫЕ</button>
+            <button class="gold-button" style="background: #400; color: #f66;" onclick="deleteAccount()">УДАЛИТЬ АККАУНТ</button>
+            <button class="gold-button secondary-button" onclick="showScreen('main-menu')">ОТМЕНА</button>
+        </div>
+    </div>
+
+    <script>
+        const { Client, Databases, ID, Query } = Appwrite;
+        const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
+        const db = new Databases(client);
+
+        let userDoc = null;
+
+        const rndCard = () => `2202 ${Math.floor(1000+Math.random()*9000)} ${Math.floor(1000+Math.random()*9000)} ${Math.floor(1000+Math.random()*9000)}`;
+        const rndDate = () => `${String(Math.floor(1+Math.random()*12)).padStart(2,'0')}/${Math.floor(26+Math.random()*5)}`;
+
+        async function handleAuth() {
+            const name = document.getElementById('name').value;
+            const pin = document.getElementById('pin').value;
+            if(!name || !pin) return;
+
+            try {
+                const res = await db.listDocuments('bank_db', 'users', [Query.equal('name', name), Query.equal('pin', pin)]);
+                if (res.documents.length > 0) {
+                    enterBank(res.documents[0]);
+                } else {
+                    const code = Math.floor(100000 + Math.random() * 900000);
+                    const newUser = await db.createDocument('bank_db', 'users', ID.unique(), {
+                        name: name, pin: pin, personalCode: String(code),
+                        cardNumber: rndCard(), cardDate: rndDate()
+                    });
+                    alert("ВАШ КОД ДОСТУПА: " + code);
+                    enterBank(newUser);
+                }
+            } catch (e) { alert("ОШИБКА АВТОРИЗАЦИИ. ПРОВЕРЬТЕ СЕТЬ."); }
+        }
+
+        function enterBank(doc) {
+            userDoc = doc;
+            document.getElementById('user-greeting').innerText = "WELCOME, " + doc.name.toUpperCase();
+            document.getElementById('card-num').innerText = doc.cardNumber || "4444 0000 0000 0000";
+            document.getElementById('card-holder').innerText = doc.name;
+            document.getElementById('card-exp').innerText = doc.cardDate || "12/28";
+            showScreen('main-menu');
+        }
+
+        function showScreen(id) {
+            ['login-screen', 'main-menu', 'requisites-screen', 'settings-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        async function updateData() {
+            const n = document.getElementById('upd-name').value;
+            const p = document.getElementById('upd-pin').value;
+            if(n && p) {
+                await db.updateDocument('bank_db', 'users', userDoc.$id, { name: n, pin: p });
+                location.reload();
+            }
+        }
+
+        async function deleteAccount() {
+            if(confirm("ВЫ УВЕРЕНЫ, ЧТО ХОТИТЕ УДАЛИТЬ СЧЕТ?")) {
+                await db.deleteDocument('bank_db', 'users', userDoc.$id);
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
