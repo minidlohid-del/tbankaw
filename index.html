@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Т-Банк Облачный</title>
+    <!-- Подключаем SDK Appwrite -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #ffdd2d; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #f2d200; }
+        .hidden { display: none; }
+        .card { background: linear-gradient(135deg, #333, #000); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="auth-screen">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Tinkoff_Logo.svg" width="150" alt="Logo">
+    <h2>Личный кабинет</h2>
+    
+    <div id="login-form">
+        <input type="text" id="login-code" placeholder="Введите личный код">
+        <input type="password" id="login-pin" placeholder="ПИН-код">
+        <button onclick="login()">Войти</button>
+        <p style="font-size: 12px; color: #666; cursor: pointer;" onclick="toggleForms()">Нет аккаунта? Регистрация</p>
+    </div>
+
+    <div id="register-form" class="hidden">
+        <input type="text" id="reg-name" placeholder="Ваше имя">
+        <input type="password" id="reg-pin" placeholder="Придумайте ПИН (4 цифры)">
+        <button onclick="register()">Создать счет</button>
+        <p style="font-size: 12px; color: #666; cursor: pointer;" onclick="toggleForms()">Уже есть счет? Войти</p>
+    </div>
+</div>
+
+<div class="container hidden" id="main-screen">
+    <div class="card">
+        <div style="font-size: 12px; opacity: 0.7;">T-Bank Black</div>
+        <h3 id="user-balance">0 ₽</h3>
+        <div id="user-card" style="letter-spacing: 2px;">**** **** **** ****</div>
+        <div id="user-name" style="margin-top: 10px; font-weight: bold;">NAME SURNAME</div>
+    </div>
+    <button onclick="logout()" style="background: #eee;">Выйти</button>
+</div>
+
+<script>
+// --- КОНФИГУРАЦИЯ APPWRITE ---
+const { Client, Databases, ID, Query } = Appwrite;
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('69f223f4002d7c30c1b9'); // Твой ID проекта из image_89b2f9.png
+
+const databases = new Databases(client);
+const DB_ID = 'bank_db'; // ID базы из image_89ab73.png[cite: 1]
+const COLL_ID = 'users'; // ID коллекции из users - Appwrite.pdf[cite: 1]
+
+// --- ФУНКЦИИ ИНТЕРФЕЙСА ---
+function toggleForms() {
+    document.getElementById('login-form').classList.toggle('hidden');
+    document.getElementById('register-form').classList.toggle('hidden');
+}
+
+// --- РЕГИСТРАЦИЯ ---
+async function register() {
+    const name = document.getElementById('reg-name').value;
+    const pin = document.getElementById('reg-pin').value;
+
+    if (!name || pin.length !== 4) {
+        alert("Введите имя и ПИН из 4 цифр");
+        return;
+    }
+
+    try {
+        const personalCode = Math.floor(100 + Math.random() * 899).toString();
+        const cardNumber = "2200 " + Math.floor(1000 + Math.random() * 8999) + " " + Math.floor(1000 + Math.random() * 8999) + " " + Math.floor(1000 + Math.random() * 8999);
+        
+        // Отправляем данные в Appwrite[cite: 1]
+        await databases.createDocument(DB_ID, COLL_ID, ID.unique(), {
+            name: name,
+            pin: pin,
+            personalCode: personalCode,
+            phone: "+7" + Math.floor(9000000000 + Math.random() * 999999999),
+            balance: 15000,
+            card: cardNumber,
+            history: "[]"
+        });
+
+        alert(`Успех! Твой ЛИЧНЫЙ КОД для входа: ${personalCode}\nЗапиши его!`);
+        toggleForms();
+    } catch (error) {
+        console.error(error);
+        alert("Ошибка! Проверь атрибуты и права доступа в Appwrite.");
+    }
+}
+
+// --- ВХОД ---
+async function login() {
+    const code = document.getElementById('login-code').value;
+    const pin = document.getElementById('login-pin').value;
+
+    try {
+        // Ищем пользователя в базе по личному коду[cite: 1]
+        const response = await databases.listDocuments(DB_ID, COLL_ID, [
+            Query.equal('personalCode', code),
+            Query.equal('pin', pin)
+        ]);
+
+        if (response.documents.length > 0) {
+            const user = response.documents[0];
+            showMainScreen(user);
+        } else {
+            alert("Неверный код или ПИН");
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Ошибка входа. Проверь консоль браузера.");
+    }
+}
+
+function showMainScreen(user) {
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('main-screen').classList.remove('hidden');
+    
+    document.getElementById('user-balance').innerText = user.balance.toLocaleString() + " ₽";
+    document.getElementById('user-card').innerText = user.card;
+    document.getElementById('user-name').innerText = user.name.toUpperCase();
+}
+
+function logout() {
+    location.reload();
+}
+</script>
+
+</body>
+</html>
