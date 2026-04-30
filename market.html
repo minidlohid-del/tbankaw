@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIWI ELITE EXCHANGE</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: sans-serif; overflow-x: hidden; }
+        .yellow-circle { width: 12px; height: 12px; background: #ffdd2d; border-radius: 50%; display: inline-block; }
+        .glass-card { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 20px; }
+        .h-scroll { display: flex; overflow-x: auto; gap: 12px; scrollbar-width: none; }
+        .h-scroll::-webkit-scrollbar { display: none; }
+        .tab-btn.active { color: #ffdd2d; border-bottom: 2px solid #ffdd2d; }
+        #loading-screen { background: #000; position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+
+    <!-- Экран входа -->
+    <div id="auth-screen" class="p-6 pt-20 max-w-sm mx-auto">
+        <h1 class="text-3xl font-black italic text-yellow-400 mb-8 uppercase text-center">Kiwi Exchange</h1>
+        <div class="glass-card p-6">
+            <input id="login-code" type="password" maxlength="3" placeholder="3 цифры" class="w-full bg-transparent border-b border-zinc-800 p-4 mb-4 text-center text-2xl outline-none">
+            <input id="login-pin" type="password" maxlength="4" placeholder="ПИН-КОД" class="w-full bg-transparent border-b border-zinc-800 p-4 mb-8 text-center text-xl outline-none">
+            <button onclick="auth()" class="w-full bg-yellow-400 text-black font-bold py-4 rounded-xl">ВОЙТИ В ТЕРМИНАЛ</button>
+        </div>
+    </div>
+
+    <!-- Основной интерфейс (скрыт до логина) -->
+    <div id="main-ui" class="hidden pb-24">
+        <!-- Шапка -->
+        <div class="p-4 flex justify-between items-center sticky top-0 bg-black z-10">
+            <div>
+                <p id="user-at" class="text-zinc-500 text-xs">@loading...</p>
+                <p id="user-balance" class="text-xl font-bold text-yellow-400">0 ₽</p>
+            </div>
+            <button onclick="showSearch()" class="p-2"><span class="text-2xl">🔍</span></button>
+        </div>
+
+        <!-- Переключатель разделов -->
+        <div class="flex justify-around border-b border-zinc-900 mb-4">
+            <button onclick="switchTab('crypto')" id="tab-crypto" class="tab-btn py-3 px-4 font-bold active">КРИПТА</button>
+            <button onclick="switchTab('market')" id="tab-market" class="tab-btn py-3 px-4 font-bold text-zinc-500">РЫНОК КИВИ</button>
+            <button onclick="switchTab('inv')" id="tab-inv" class="tab-btn py-3 px-4 font-bold text-zinc-500">ИНВЕНТАРЬ</button>
+            <button onclick="switchTab('profile')" id="tab-profile" class="tab-btn py-3 px-4 font-bold text-zinc-500">ПРОФИЛЬ</button>
+        </div>
+
+        <!-- Контент: КРИПТО (Горизонтальный) -->
+        <div id="section-crypto" class="p-4 space-y-6">
+            <div class="h-scroll" id="crypto-list">
+                <!-- Сюда вставится кивиГаз, кивиКристалл и т.д. -->
+            </div>
+            
+            <!-- Риск игра -->
+            <div class="glass-card p-4 mt-6">
+                <p class="text-[10px] text-zinc-500 uppercase mb-2">Риск-Терминал (Шанс 25%)</p>
+                <div class="flex gap-2">
+                    <input id="bet-val" type="number" placeholder="Сумма" class="bg-black border border-zinc-800 rounded-lg p-2 flex-1 text-sm outline-none">
+                    <button id="bet-btn" onclick="playRisk()" class="bg-white text-black px-4 rounded-lg font-bold text-xs uppercase">Ставка</button>
+                </div>
+                <p id="bet-timer" class="text-[9px] mt-2 text-zinc-600 italic"></p>
+            </div>
+        </div>
+
+        <!-- Контент: РЫНОК КИВИ -->
+        <div id="section-market" class="hidden p-4 grid grid-cols-2 gap-4" id="kiwi-market-list">
+            <!-- Птицы из Appwrite -->
+        </div>
+
+        <!-- Секция сделки (модалка) -->
+        <div id="trade-modal" class="fixed inset-0 bg-black hidden z-50 p-6 overflow-y-auto">
+            <button onclick="closeTrade()" class="text-zinc-500 mb-4 uppercase text-xs font-bold">← Назад</button>
+            <div id="trade-content"></div>
+        </div>
+    </div>
+
+<script>
+const { Client, Databases, Query } = Appwrite;
+const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
+const databases = new Databases(client);
+const DB_ID = 'bank_db';
+const COLL_USERS = 'users';
+const COLL_MARKET = 'market';
+
+let currentUser = null;
+let lastBetTime = 0;
+
+// Имитация цен крипты (в реальности можно писать в Appwrite)
+const cryptoAssets = [
+    { id: 'gas', name: 'кивиГаз', price: 1204, slot: 20 },
+    { id: 'crys', name: 'кивиКристалл', price: 2349, slot: 15 },
+    { id: 'coin', name: 'кивиКоин', price: 50, slot: 1000 },
+    { id: 'serv', name: 'кивиУслуги', price: 890, slot: 5 }
+];
+
+async function auth() {
+    const code = document.getElementById('login-code').value;
+    const pin = document.getElementById('login-pin').value;
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_USERS, [
+            Query.equal('code', code), Query.equal('pin', pin)
+        ]);
+        if (res.documents.length > 0) {
+            currentUser = res.documents[0];
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-ui').classList.remove('hidden');
+            initApp();
+        } else { alert("ОТКАЗАНО В ДОСТУПЕ"); }
+    } catch (e) { alert("ОШИБКА БАЗЫ"); }
+}
+
+function initApp() {
+    document.getElementById('user-at').innerText = `@${currentUser.$id.slice(-6)}`;
+    document.getElementById('user-balance').innerText = currentUser.balance.toLocaleString() + " ₽";
+    renderCrypto();
+    renderMarket();
+}
+
+function switchTab(tab) {
+    ['crypto', 'market', 'inv', 'profile'].forEach(t => {
+        document.getElementById('section-' + t)?.classList.add('hidden');
+        document.getElementById('tab-' + t).classList.remove('active');
+        document.getElementById('tab-' + t).classList.add('text-zinc-500');
+    });
+    document.getElementById('section-' + tab)?.classList.remove('hidden');
+    document.getElementById('tab-' + tab).classList.add('active');
+}
+
+function renderCrypto() {
+    const list = document.getElementById('crypto-list');
+    list.innerHTML = cryptoAssets.map(asset => `
+        <div onclick="openTrade('${asset.id}', 'crypto')" class="glass-card p-4 min-w-[160px] cursor-pointer">
+            <div class="yellow-circle mb-2"></div>
+            <p class="text-xs font-bold">${asset.name}</p>
+            <p class="text-lg text-yellow-400 font-black">${asset.price} ₽</p>
+        </div>
+    `).join('');
+}
+
+async function renderMarket() {
+    const list = document.getElementById('section-market');
+    const res = await databases.listDocuments(DB_ID, COLL_MARKET);
+    list.innerHTML = res.documents.map(kiwi => `
+        <div onclick="openTrade('${kiwi.$id}', 'kiwi')" class="glass-card p-3 text-center">
+            <img src="${kiwi.image}" class="w-full h-24 object-contain mb-2">
+            <p class="text-[10px] text-zinc-500 font-bold uppercase">${kiwi.name}</p>
+            <p class="text-sm font-black">${kiwi.price} ₽</p>
+            <p class="text-[8px] text-zinc-600 italic">Свободно: 2 шт</p>
+        </div>
+    `).join('');
+}
+
+function openTrade(id, type) {
+    const modal = document.getElementById('trade-modal');
+    const content = document.getElementById('trade-content');
+    modal.classList.remove('hidden');
+    
+    // Генерируем случайный график
+    const history = Array.from({length: 10}, () => Math.floor(Math.random() * 5000));
+    
+    content.innerHTML = `
+        <h2 class="text-3xl font-black italic uppercase mb-2">${id}</h2>
+        <p class="text-zinc-500 text-xs mb-6">Свободно в слоте: 20 штук</p>
+        <div class="text-4xl font-bold mb-8 text-yellow-400">1230 ₽</div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <button class="bg-green-600 text-white font-bold py-4 rounded-xl uppercase text-xs">Купить+ (0)</button>
+            <button class="bg-red-600 text-white font-bold py-4 rounded-xl uppercase text-xs">Продать+ (0)</button>
+        </div>
+        
+        <p class="text-zinc-500 text-[10px] mb-4 italic text-center">Комиссия сделки: 101 ₽</p>
+        
+        <div class="glass-card p-4 h-48 mb-6">
+             <canvas id="tradeChart"></canvas>
+        </div>
+    `;
+    
+    setTimeout(() => {
+        const ctx = document.getElementById('tradeChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: history.map(() => ''),
+                datasets: [{ data: history, borderColor: '#ffdd2d', borderWidth: 2, tension: 0.4, pointRadius: 2 }]
+            },
+            options: { plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+        });
+    }, 100);
+}
+
+function closeTrade() { document.getElementById('trade-modal').classList.add('hidden'); }
+
+async function playRisk() {
+    const now = Date.now();
+    if (now - lastBetTime < 10000) {
+        alert("Подожди 10 секунд!");
+        return;
+    }
+    
+    const amount = parseInt(document.getElementById('bet-val').value);
+    if (!amount || amount > currentUser.balance) return;
+    
+    lastBetTime = now;
+    const win = Math.random() < 0.25; // Шанс 25%
+    
+    if (win) {
+        currentUser.balance += amount * 3;
+        alert("🔥 ВЫИГРЫШ! x3");
+    } else {
+        currentUser.balance -= amount;
+        alert("💀 ПОРАЖЕНИЕ");
+    }
+    
+    // Обновляем базу
+    await databases.updateDocument(DB_ID, COLL_USERS, currentUser.$id, { balance: currentUser.balance });
+    document.getElementById('user-balance').innerText = currentUser.balance.toLocaleString() + " ₽";
+}
+
+</script>
+</body>
+</html>
