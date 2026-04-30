@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIWI ELITE | SEARCH & GIFT</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        :root { --green: #00ff00; --bg: #000; --card: #111; --red: #ff3333; --blue: #3399ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; padding-bottom: 80px; }
+        
+        .header { display: flex; flex-direction: column; padding: 10px 15px; background: #080808; border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 100; gap: 10px; }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        
+        .search-box { position: relative; width: 100%; }
+        .search-box input { width: 100%; background: #1a1a1a; border: 1px solid #333; color: white; padding: 10px; border-radius: 8px; box-sizing: border-box; outline: none; }
+        #search-res { position: absolute; top: 45px; left: 0; width: 100%; background: #080808; border: 1px solid #333; border-radius: 8px; display: none; z-index: 110; max-height: 200px; overflow-y: auto; }
+        .s-item { padding: 12px; border-bottom: 1px solid #1a1a1a; cursor: pointer; }
+
+        .container { padding: 15px; }
+        .item { display: flex; align-items: center; background: var(--card); margin-bottom: 8px; padding: 12px; border-radius: 12px; border: 1px solid #222; }
+        .img-kiwi { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin-right: 12px; border: 1px solid var(--green); }
+        
+        .nav { position: fixed; bottom: 0; width: 100%; background: #080808; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #222; }
+        .n-btn { background: none; border: none; color: #555; font-size: 0.7em; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .n-btn.active { color: var(--green); }
+
+        .btn { padding: 8px 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; font-size: 0.85em; }
+        .buy { background: var(--green); color: black; }
+        .sell { background: var(--red); color: white; margin-right: 5px; }
+        .gift { background: var(--blue); color: white; }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 200; display: none; flex-direction: column; padding: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="auth" style="position:fixed; inset:0; background:#000; z-index:300; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <h1 style="color:var(--green)">KIWI ELITE</h1>
+        <input type="text" id="cid" placeholder="CID КАРТЫ" style="padding:14px; margin:5px; width:260px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <input type="password" id="pin" placeholder="PIN-КОД" style="padding:14px; margin:5px; width:260px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <button class="btn buy" style="width:290px; margin-top:10px" onclick="login()">ВОЙТИ</button>
+    </div>
+
+    <div id="app" style="display:none;">
+        <div class="header">
+            <div class="row">
+                <div style="font-size: 0.8em; opacity:0.6;">ID: <span id="pub-id" style="color:var(--green); opacity:1;">---</span></div>
+                <div style="color:var(--green); font-weight:bold;"><span id="bal">0</span> ₽</div>
+            </div>
+            <div class="search-box">
+                <input type="text" id="inp-search" placeholder="Поиск игрока по ID..." oninput="doSearch()">
+                <div id="search-res"></div>
+            </div>
+        </div>
+
+        <div class="container" id="main"></div>
+
+        <nav class="nav">
+            <button class="n-btn active" onclick="tab('coins')">Биржа</button>
+            <button class="n-btn" onclick="tab('market')">NFT</button>
+            <button class="n-btn" onclick="tab('inv')">Инвентарь</button>
+            <button class="n-btn" onclick="tab('me')">Профиль</button>
+        </nav>
+    </div>
+
+    <!-- Модалка просмотра игрока -->
+    <div id="user-view" class="modal">
+        <button onclick="this.parentElement.style.display='none'" style="align-self:flex-end; background:none; border:none; color:white; font-size:2em;">&times;</button>
+        <h2 id="v-name" style="color:var(--green)"></h2>
+        <p>NFT этого пользователя:</p>
+        <div id="v-items"></div>
+    </div>
+
+<script>
+const { Client, Databases, Query, ID } = Appwrite;
+const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
+const db = new Databases(client);
+
+const DB = 'bank_db', U_COLL = 'users', M_COLL = 'market';
+let user = null;
+
+async function login() {
+    const c = document.getElementById('cid').value, p = document.getElementById('pin').value;
+    if(!c || !p) return;
+    try {
+        const res = await db.listDocuments(DB, U_COLL, [Query.equal('personalCode', c)]);
+        if(res.documents.length > 0) {
+            const d = res.documents[0];
+            if(d.pin === p) { user = d; start(); } else alert("Wrong PIN");
+        } else {
+            const genID = "ID" + Math.floor(100000 + Math.random() * 899999);
+            user = await db.createDocument(DB, U_COLL, ID.unique(), { personalCode: c, pin: p, balance: 30000, publicID: genID });
+            start();
+        }
+    } catch(e) { alert("Ошибка сети. Проверьте Appwrite."); }
+}
+
+function start() {
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('pub-id').innerText = user.publicID;
+    updateUI(); tab('coins');
+}
+
+function updateUI() { document.getElementById('bal').innerText = user.balance.toLocaleString(); }
+
+async function doSearch() {
+    const q = document.getElementById('inp-search').value, res = document.getElementById('search-res');
+    if(q.length < 3) { res.style.display = 'none'; return; }
+    try {
+        const r = await db.listDocuments(DB, U_COLL, [Query.startsWith('publicID', q.toUpperCase())]);
+        res.innerHTML = '';
+        if(r.documents.length > 0) {
+            res.style.display = 'block';
+            r.documents.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 's-item'; div.innerText = "👤 " + u.publicID;
+                div.onclick = () => showUser(u);
+                res.appendChild(div);
+            });
+        }
+    } catch(e) {}
+}
+
+async function showUser(u) {
+    document.getElementById('search-res').style.display = 'none';
+    document.getElementById('v-name').innerText = u.publicID;
+    const box = document.getElementById('v-items'); box.innerHTML = 'Загрузка...';
+    document.getElementById('user-view').style.display = 'flex';
+    const items = await db.listDocuments(DB, M_COLL, [Query.equal('ownerId', u.$id)]);
+    box.innerHTML = items.documents.length ? '' : 'У игрока нет NFT';
+    items.documents.forEach(i => { box.innerHTML += `<div class="item"><b>${i.name}</b></div>`; });
+}
+
+function tab(t) {
+    const m = document.getElementById('main'); m.innerHTML = `<h2 style="color:var(--green)">${t.toUpperCase()}</h2>`;
+    document.querySelectorAll('.n-btn').forEach(b => b.classList.remove('active'));
+    if(t === 'coins') renderCoins();
+    if(t === 'market') renderNFTs();
+    if(t === 'inv') renderInv();
+    if(t === 'me') renderMe();
+}
+
+function renderCoins() {
+    const m = document.getElementById('main');
+    for(let i=1; i<=15; i++){
+        let p = (i * 2000) + Math.floor(Math.random()*1000);
+        m.innerHTML += `<div class="item"><div style="flex:1"><b>KiwiCoin v${i}</b></div><div style="margin-right:15px">${p} ₽</div><button class="btn buy" onclick="buy('Coin v${i}', ${p})">КУПИТЬ</button></div>`;
+    }
+}
+
+function renderNFTs() {
+    const m = document.getElementById('main');
+    for(let i=1; i<=100; i++){ // 100 для скорости загрузки
+        let p = 2000 + (i * 900);
+        m.innerHTML += `<div class="item"><img src="photo_2026-04-29_23-50-11" class="img-kiwi"><div style="flex:1"><b>NFT #${i}</b></div><div style="margin-right:10px">${p} ₽</div><button class="btn buy" onclick="buy('NFT #${i}', ${p})">ВЗЯТЬ</button></div>`;
+    }
+}
+
+async function buy(n, p) {
+    if(user.balance < p) return alert("Мало средств");
+    user.balance -= p;
+    await db.updateDocument(DB, U_COLL, user.$id, { balance: user.balance });
+    await db.createDocument(DB, M_COLL, ID.unique(), { name: n, price: p, ownerId: user.$id });
+    updateUI(); alert("Готово!");
+}
+
+async function renderInv() {
+    const m = document.getElementById('main'), r = await db.listDocuments(DB, M_COLL, [Query.equal('ownerId', user.$id)]);
+    if(!r.documents.length) m.innerHTML += "<p>Пусто</p>";
+    r.documents.forEach(i => {
+        m.innerHTML += `<div class="item">
+            <div style="flex:1"><b>${i.name}</b></div>
+            <button class="btn sell" onclick="sell('${i.$id}', ${i.price})">ПРОДАТЬ</button>
+            <button class="btn gift" onclick="gift('${i.$id}', '${i.name}')">ПОДАРИТЬ</button>
+        </div>`;
+    });
+}
+
+async function sell(id, p) {
+    user.balance += Math.floor(p * 0.8);
+    await db.updateDocument(DB, U_COLL, user.$id, { balance: user.balance });
+    await db.deleteDocument(DB, M_COLL, id);
+    updateUI(); tab('inv');
+}
+
+async function gift(itemId, itemName) {
+    const targetID = prompt("Введите PUBLIC ID получателя (например, ID123456):");
+    if(!targetID) return;
+    try {
+        const res = await db.listDocuments(DB, U_COLL, [Query.equal('publicID', targetID)]);
+        if(res.documents.length === 0) return alert("Игрок не найден!");
+        const targetUser = res.documents[0];
+        await db.updateDocument(DB, M_COLL, itemId, { ownerId: targetUser.$id });
+        alert(`Предмет "${itemName}" отправлен игроку ${targetID}!`);
+        tab('inv');
+    } catch(e) { alert("Ошибка при передаче"); }
+}
+
+function renderMe() {
+    document.getElementById('main').innerHTML += `<div style="background:#111; padding:20px; border-radius:15px;">
+        <p>ID: <b style="color:var(--green)">${user.publicID}</b></p>
+        <p>CID: ${user.personalCode}</p>
+        <p>БАЛАНС: ${user.balance} ₽</p>
+    </div>`;
+}
+</script>
+</body>
+</html>
