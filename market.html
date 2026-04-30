@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIWI ELITE | FINAL SYSTEM</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        :root { --main-green: #00ff00; --bg-dark: #000; --card-bg: #111; --red: #ff3333; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: white; margin: 0; padding-bottom: 80px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #080808; border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 100; }
+        .container { padding: 15px; }
+        
+        .list-item { display: flex; align-items: center; background: var(--card-bg); margin-bottom: 8px; padding: 12px; border-radius: 12px; border: 1px solid #222; }
+        .circle-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 1px solid var(--main-green); }
+        .item-info { flex-grow: 1; }
+
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #080808; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #222; z-index: 100; }
+        .nav-btn { background: none; border: none; color: #555; font-size: 0.7em; cursor: pointer; font-weight: bold; text-transform: uppercase; }
+        .nav-btn.active { color: var(--main-green); }
+
+        .action-btn { padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-buy { background: var(--main-green); color: black; }
+        .btn-sell { background: var(--red); color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- ВХОД -->
+    <div id="auth-screen" style="position:fixed; inset:0; background:#000; z-index:300; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <h1 style="color:var(--main-green); letter-spacing: 2px;">KIWI ELITE</h1>
+        <input type="text" id="user-code" placeholder="CID КАРТЫ" style="padding:14px; margin:10px; width:260px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <input type="password" id="user-pin" placeholder="PIN-КОД" style="padding:14px; margin:10px; width:260px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <button class="action-btn btn-buy" style="width:290px; margin-top:10px" onclick="login()">ВОЙТИ</button>
+    </div>
+
+    <!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
+    <div id="main-app" style="display:none;">
+        <div class="header">
+            <div style="font-size: 0.85em; opacity: 0.8;">ID: <span id="my-public-id" style="color:var(--main-green); font-weight:bold;">...</span></div>
+            <div style="color:var(--main-green); font-weight:bold;"><span id="header-balance">0</span> ₽</div>
+        </div>
+
+        <div class="container" id="content-area"></div>
+
+        <nav class="bottom-nav">
+            <div class="nav-btn active" onclick="showTab('crypto')">Биржа</div>
+            <div class="nav-btn" onclick="showTab('nft')">NFT рынок</div>
+            <div class="nav-btn" onclick="showTab('inventory')">Инвентарь</div>
+            <div class="nav-btn" onclick="showTab('profile')">Профиль</div>
+        </nav>
+    </div>
+
+<script>
+const { Client, Databases, Query, ID } = Appwrite;
+const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
+const databases = new Databases(client);
+
+const DB_ID = 'bank_db';
+const COLL_USERS = 'users';
+const COLL_MARKET = 'market';
+
+let currentUser = null;
+let inventory = [];
+
+// Авторизация и фикс undefined ID
+async function login() {
+    const cid = document.getElementById('user-code').value;
+    const pin = document.getElementById('user-pin').value;
+    if(!cid || !pin) return;
+
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_USERS, [Query.equal('personalCode', cid)]);
+        
+        if(res.documents.length > 0) {
+            const user = res.documents[0];
+            if(user.pin === pin) {
+                currentUser = user;
+                // Если вдруг publicID пропал, генерим на лету
+                if(!currentUser.publicID) {
+                    const newID = "ID" + Math.floor(100000 + Math.random() * 899999);
+                    await databases.updateDocument(DB_ID, COLL_USERS, user.$id, { publicID: newID });
+                    currentUser.publicID = newID;
+                }
+                loadApp();
+            } else { alert("Неверный PIN"); }
+        } else {
+            const newID = "ID" + Math.floor(100000 + Math.random() * 899999);
+            const newUser = await databases.createDocument(DB_ID, COLL_USERS, ID.unique(), {
+                personalCode: cid,
+                pin: pin,
+                balance: 15000,
+                publicID: newID
+            });
+            currentUser = newUser;
+            loadApp();
+        }
+    } catch(e) { alert("Ошибка подключения"); }
+}
+
+async function loadApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    document.getElementById('my-public-id').innerText = currentUser.publicID;
+    updateBalanceDisplay();
+    await loadInventory();
+    showTab('crypto');
+}
+
+function updateBalanceDisplay() {
+    document.getElementById('header-balance').innerText = currentUser.balance.toLocaleString();
+}
+
+async function loadInventory() {
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_MARKET, [Query.equal('ownerId', currentUser.$id)]);
+        inventory = res.documents;
+    } catch(e) { inventory = []; }
+}
+
+function showTab(tab) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    const container = document.getElementById('content-area');
+    container.innerHTML = `<h2 style="color:var(--main-green); margin-bottom:20px;">${tab.toUpperCase()}</h2>`;
+    
+    if(tab === 'crypto') renderCrypto();
+    if(tab === 'nft') renderNFTMarket();
+    if(tab === 'inventory') renderInventory();
+    if(tab === 'profile') renderProfile();
+}
+
+// 15 монеток с меняющимися ценами
+function renderCrypto() {
+    const container = document.getElementById('content-area');
+    for(let i = 1; i <= 15; i++) {
+        // Цена меняется при каждом клике на вкладку
+        const basePrice = i * 2000;
+        const randomFluc = Math.floor(Math.random() * 500) - 250;
+        const finalPrice = basePrice + randomFluc;
+        
+        container.innerHTML += `
+            <div class="list-item">
+                <div class="item-info"><b>KIWI COIN v${i}</b></div>
+                <div style="margin-right:15px; font-weight:bold;">${finalPrice} ₽</div>
+                <button class="action-btn btn-buy" onclick="buySomething('KIWI COIN v${i}', ${finalPrice}, 'coin')">КУПИТЬ</button>
+            </div>`;
+    }
+}
+
+// 1000 NFT с ценами от 2000 до 100000
+function renderNFTMarket() {
+    const container = document.getElementById('content-area');
+    const scrollBox = document.createElement('div');
+    
+    for(let i = 1; i <= 1000; i++) {
+        const price = Math.floor(2000 + (i * 98)); 
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `
+            <img src="photo_2026-04-29_23-50-11" class="circle-img">
+            <div class="item-info"><b>KIWI NFT #${i}</b></div>
+            <div style="margin-right:10px; color:var(--main-green)">${price} ₽</div>
+            <button class="action-btn btn-buy" onclick="buySomething('KIWI NFT #${i}', ${price}, 'nft')">ВЗЯТЬ</button>
+        `;
+        scrollBox.appendChild(div);
+    }
+    container.appendChild(scrollBox);
+}
+
+// Функция покупки: теперь реально сохраняет в инвентарь
+async function buySomething(name, price, type) {
+    if(currentUser.balance < price) return alert("Недостаточно денег!");
+    
+    try {
+        const newBalance = currentUser.balance - price;
+        // Обновляем баланс в базе
+        await databases.updateDocument(DB_ID, COLL_USERS, currentUser.$id, { balance: newBalance });
+        // Создаем предмет в инвентаре (коллекция market)
+        await databases.createDocument(DB_ID, COLL_MARKET, ID.unique(), {
+            name: name,
+            price: price,
+            ownerId: currentUser.$id,
+            image: "photo_2026-04-29_23-50-11"
+        });
+        
+        currentUser.balance = newBalance;
+        updateBalanceDisplay();
+        await loadInventory();
+        alert("Успешно куплено!");
+    } catch(e) { alert("Ошибка при покупке"); }
+}
+
+async function renderInventory() {
+    const container = document.getElementById('content-area');
+    await loadInventory();
+    
+    if(inventory.length === 0) {
+        container.innerHTML += "<p style='opacity:0.5'>Инвентарь пуст. Купите что-нибудь на бирже!</p>";
+        return;
+    }
+
+    inventory.forEach(item => {
+        container.innerHTML += `
+            <div class="list-item">
+                <img src="${item.image}" class="circle-img">
+                <div class="item-info"><b>${item.name}</b></div>
+                <button class="action-btn btn-sell" onclick="sellItem('${item.$id}', ${Math.floor(item.price * 0.8)})">ПРОДАТЬ</button>
+            </div>`;
+    });
+}
+
+async function sellItem(id, sellPrice) {
+    try {
+        const newBalance = currentUser.balance + sellPrice;
+        await databases.updateDocument(DB_ID, COLL_USERS, currentUser.$id, { balance: newBalance });
+        await databases.deleteDocument(DB_ID, COLL_MARKET, id);
+        
+        currentUser.balance = newBalance;
+        updateBalanceDisplay();
+        await loadInventory();
+        showTab('inventory');
+    } catch(e) { alert("Ошибка при продаже"); }
+}
+
+function renderProfile() {
+    document.getElementById('content-area').innerHTML += `
+        <div style="background:#111; padding:20px; border-radius:15px; border:1px solid #222;">
+            <p style="opacity:0.5; margin:0">ВАШ ПУБЛИЧНЫЙ ID:</p>
+            <h2 style="color:var(--main-green); margin:5px 0 20px 0">${currentUser.publicID}</h2>
+            <p>CID КАРТЫ: <b>${currentUser.personalCode}</b></p>
+            <p>БАЛАНС: <b>${currentUser.balance} ₽</b></p>
+            <p>ПРЕДМЕТОВ: <b>${inventory.length}</b></p>
+        </div>
+    `;
+}
+</script>
+</body>
+</html>
