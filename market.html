@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIWI ELITE | ULTIMATE</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        :root { --green: #00ff00; --bg: #000; --card: #111; --red: #ff3333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; padding-bottom: 80px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #080808; border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 100; }
+        .container { padding: 15px; }
+        
+        .item { display: flex; align-items: center; background: var(--card); margin-bottom: 8px; padding: 12px; border-radius: 12px; border: 1px solid #222; }
+        .img-kiwi { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 1px solid var(--green); }
+        
+        .nav { position: fixed; bottom: 0; width: 100%; background: #080808; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #222; }
+        .n-btn { background: none; border: none; color: #555; font-size: 0.7em; font-weight: bold; cursor: pointer; }
+        .n-btn.active { color: var(--green); }
+
+        .btn { padding: 10px 15px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .buy { background: var(--green); color: black; }
+        .sell { background: var(--red); color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- ВХОД -->
+    <div id="auth" style="position:fixed; inset:0; background:#000; z-index:300; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <h1 style="color:var(--green)">KIWI ELITE</h1>
+        <input type="text" id="cid" placeholder="CID КАРТЫ" style="padding:14px; margin:10px; width:260px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <input type="password" id="pin" placeholder="PIN-КОД" style="padding:14px; margin:10px; width:260px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <button class="btn buy" style="width:290px" onclick="login()">ВОЙТИ</button>
+    </div>
+
+    <!-- ПРИЛОЖЕНИЕ -->
+    <div id="app" style="display:none;">
+        <div class="header">
+            <div style="font-size: 0.9em;">ID: <span id="pub-id" style="color:var(--green)">---</span></div>
+            <div style="color:var(--green); font-weight:bold;"><span id="bal">0</span> ₽</div>
+        </div>
+
+        <div class="container" id="main"></div>
+
+        <nav class="nav">
+            <button class="n-btn active" onclick="tab('coins')">БИРЖА</button>
+            <button class="n-btn" onclick="tab('market')">NFT РЫНОК</button>
+            <button class="n-btn" onclick="tab('inv')">ИНВЕНТАРЬ</button>
+            <button class="n-btn" onclick="tab('me')">ПРОФИЛЬ</button>
+        </nav>
+    </div>
+
+<script>
+const { Client, Databases, Query, ID } = Appwrite;
+const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
+const db = new Databases(client);
+
+const DB = 'bank_db';
+const U_COLL = 'users';
+const M_COLL = 'market';
+
+let user = null;
+let myItems = [];
+
+async function login() {
+    const c = document.getElementById('cid').value;
+    const p = document.getElementById('pin').value;
+    if(!c || !p) return;
+
+    try {
+        const res = await db.listDocuments(DB, U_COLL, [Query.equal('personalCode', c)]);
+        if(res.documents.length > 0) {
+            const doc = res.documents[0];
+            if(doc.pin === p) {
+                user = doc;
+                if(!user.publicID) user.publicID = "ID" + Math.floor(100000 + Math.random() * 899999);
+                start();
+            } else { alert("Неверный PIN"); }
+        } else {
+            // Регистрация нового
+            const genID = "ID" + Math.floor(100000 + Math.random() * 899999);
+            user = await db.createDocument(DB, U_COLL, ID.unique(), {
+                personalCode: c, pin: p, balance: 25000, publicID: genID
+            });
+            start();
+        }
+    } catch(e) { 
+        alert("Ошибка Appwrite! Вхожу в демо-режиме.");
+        user = { personalCode: c, balance: 25000, publicID: "DEMO"+c, $id: "demo" };
+        start();
+    }
+}
+
+function start() {
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('pub-id').innerText = user.publicID;
+    updateUI();
+    tab('coins');
+}
+
+function updateUI() {
+    document.getElementById('bal').innerText = user.balance.toLocaleString();
+}
+
+function tab(t) {
+    const m = document.getElementById('main');
+    m.innerHTML = `<h2 style="color:var(--green)">${t.toUpperCase()}</h2>`;
+    document.querySelectorAll('.n-btn').forEach(b => b.classList.remove('active'));
+    
+    if(t === 'coins') renderCoins();
+    if(t === 'market') renderNFTs();
+    if(t === 'inv') renderInv();
+    if(t === 'me') renderMe();
+}
+
+function renderCoins() {
+    const m = document.getElementById('main');
+    for(let i=1; i<=15; i++) {
+        // Цена "прыгает" от 1000 до 15000 + рандом
+        let price = (i * 1000) + Math.floor(Math.random() * 500);
+        m.innerHTML += `
+            <div class="item">
+                <div style="flex:1"><b>KiwiCoin v${i}</b></div>
+                <div style="margin-right:15px">${price} ₽</div>
+                <button class="btn buy" onclick="buy('KiwiCoin v${i}', ${price})">КУПИТЬ</button>
+            </div>`;
+    }
+}
+
+function renderNFTs() {
+    const m = document.getElementById('main');
+    const box = document.createElement('div');
+    for(let i=1; i<=1000; i++) {
+        // Цена от 2000 до 100000 по возрастанию
+        let price = 2000 + Math.floor(i * 98);
+        const d = document.createElement('div');
+        d.className = 'item';
+        d.innerHTML = `
+            <img src="photo_2026-04-29_23-50-11" class="img-kiwi">
+            <div style="flex:1"><b>KIWI NFT #${i}</b></div>
+            <div style="margin-right:10px; color:var(--green)">${price} ₽</div>
+            <button class="btn buy" style="padding:5px 10px" onclick="buy('NFT #${i}', ${price})">ВЗЯТЬ</button>
+        `;
+        box.appendChild(d);
+    }
+    m.appendChild(box);
+}
+
+async function buy(name, price) {
+    if(user.balance < price) return alert("Мало денег!");
+    
+    user.balance -= price;
+    myItems.push({ name, price, id: Date.now() });
+    
+    try {
+        await db.updateDocument(DB, U_COLL, user.$id, { balance: user.balance });
+    } catch(e) { console.log("Синхронизация баланса не удалась"); }
+    
+    updateUI();
+    alert("Куплено: " + name);
+}
+
+function renderInv() {
+    const m = document.getElementById('main');
+    if(myItems.length === 0) return m.innerHTML += "<p>Пусто...</p>";
+    myItems.forEach((item, idx) => {
+        m.innerHTML += `
+            <div class="item">
+                <div style="flex:1"><b>${item.name}</b></div>
+                <button class="btn sell" onclick="sell(${idx})">ПРОДАТЬ</button>
+            </div>`;
+    });
+}
+
+function sell(idx) {
+    const item = myItems[idx];
+    user.balance += Math.floor(item.price * 0.9); // Продажа чуть дешевле
+    myItems.splice(idx, 1);
+    updateUI();
+    tab('inv');
+}
+
+function renderMe() {
+    document.getElementById('main').innerHTML += `
+        <div style="background:#111; padding:20px; border-radius:15px; border:1px solid #222">
+            <p>МОЙ ID: <b style="color:var(--green)">${user.publicID}</b></p>
+            <p>CID: ${user.personalCode}</p>
+            <p>БАЛАНС: ${user.balance} ₽</p>
+            <p>ВЕЩЕЙ: ${myItems.length}</p>
+        </div>
+    `;
+}
+</script>
+</body>
+</html>
