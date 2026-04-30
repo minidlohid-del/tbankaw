@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История и Чеки</title>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --bg: #f0f2f5;
+            --white: #ffffff;
+            --text: #333;
+            --gray: #777;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+        }
+
+        h2 { text-align: center; color: var(--text); }
+
+        /* Стиль списка истории */
+        .history-list {
+            background: var(--white);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover { background: #f9f9f9; }
+        .history-item:last-child { border-bottom: none; }
+
+        .item-info .name { font-weight: 600; display: block; }
+        .item-info .date { font-size: 12px; color: var(--gray); }
+        .item-amount { font-weight: bold; color: var(--text); }
+
+        /* Модальное окно (Чек) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none; /* Скрыто по умолчанию */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .receipt-card {
+            background: var(--white);
+            width: 90%;
+            max-width: 360px;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .status-icon {
+            width: 50px; height: 50px; background: var(--primary);
+            color: white; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center;
+            margin: 0 auto 10px; font-size: 24px;
+        }
+
+        .amount-big { font-size: 28px; font-weight: bold; margin-bottom: 20px; }
+
+        .details { text-align: left; border-top: 1px dashed #ccc; padding-top: 15px; }
+        .detail-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
+        .label { color: var(--gray); }
+        .val { font-weight: 500; }
+
+        .btn-close {
+            margin-top: 20px; width: 100%; padding: 12px;
+            background: #222; color: white; border: none;
+            border-radius: 10px; cursor: pointer; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>История операций</h2>
+    <div class="history-list" id="historyList">
+        <!-- Сюда можно подгружать данные из Supabase -->
+        <div class="history-item" onclick="showReceipt('owershus', '1 500,00 ₽', '30.04.2026, 07:43')">
+            <div class="item-info">
+                <span class="name">Перевод owershus</span>
+                <span class="date">Сегодня, 07:43</span>
+            </div>
+            <div class="item-amount">- 1 500 ₽</div>
+        </div>
+        <div class="history-item" onclick="showReceipt('Minecraft Server', '500,00 ₽', '29.04.2026, 18:20')">
+            <div class="item-info">
+                <span class="name">Оплата хостинга</span>
+                <span class="date">Вчера, 18:20</span>
+            </div>
+            <div class="item-amount">- 500 ₽</div>
+        </div>
+    </div>
+</div>
+
+<!-- Окно чека -->
+<div class="modal-overlay" id="modal">
+    <div class="receipt-card">
+        <div class="status-icon">✓</div>
+        <div style="color: var(--primary); font-weight: 600; margin-bottom: 5px;">Успешно</div>
+        <div class="amount-big" id="recAmount">0.00 ₽</div>
+        
+        <div class="details">
+            <div class="detail-row"><span class="label">Получатель</span><span class="val" id="recName">---</span></div>
+            <div class="detail-row"><span class="label">Дата</span><span class="val" id="recDate">---</span></div>
+            <div class="detail-row"><span class="label">Тип</span><span class="val">Перевод</span></div>
+            <div class="detail-row"><span class="label">Комиссия</span><span class="val">0,00 ₽</span></div>
+        </div>
+
+        <button class="btn-close" onclick="closeModal()">Закрыть</button>
+    </div>
+</div>
+
+<script>
+    function showReceipt(name, amount, date) {
+        document.getElementById('recName').innerText = name;
+        document.getElementById('recAmount').innerText = amount;
+        document.getElementById('recDate').innerText = date;
+        document.getElementById('modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    // Закрытие при клике на фон
+    window.onclick = function(event) {
+        let modal = document.getElementById('modal');
+        if (event.target == modal) closeModal();
+    }
+</script>
+
+</body>
+</html>
