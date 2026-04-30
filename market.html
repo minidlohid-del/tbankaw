@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KIWI EXCHANGE | TERMINAL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: 'Courier New', monospace; }
+        .glass-card { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 24px; }
+        .tab-btn.active { color: #ffdd2d; border-bottom: 2px solid #ffdd2d; }
+        .hidden { display: none !important; }
+        input { background: transparent; outline: none; border-bottom: 1px solid #333; transition: 0.3s; }
+        input:focus { border-color: #ffdd2d; }
+    </style>
+</head>
+<body>
+    <!-- ЭКРАН АВТОРИЗАЦИИ (Единый вход с Банком) -->
+    <div id="auth-screen" class="p-6 pt-24 max-w-sm mx-auto">
+        <div class="text-center mb-10">
+            <h1 class="text-3xl font-black italic text-yellow-400 uppercase">KIWI TERMINAL</h1>
+            <p class="text-[8px] tracking-[0.3em] text-zinc-600 mt-2">SHARED ACCOUNT ACCESS</p>
+        </div>
+        <div class="glass-card p-8 border-zinc-900">
+            <!-- Сюда вводим 229 и 2222 как в примере -->
+            <input id="login-code" type="password" maxlength="3" placeholder="КОД" class="w-full p-4 mb-6 text-center text-3xl font-mono">
+            <input id="login-pin" type="password" maxlength="4" placeholder="ПИН" class="w-full p-4 mb-10 text-center text-xl font-mono">
+            <button onclick="auth()" id="auth-btn" class="w-full bg-yellow-400 text-black font-black py-5 rounded-2xl uppercase tracking-widest text-xs hover:bg-yellow-500">Авторизация</button>
+        </div>
+    </div>
+
+    <!-- ГЛАВНЫЙ ИНТЕРФЕЙС -->
+    <div id="main-ui" class="hidden min-h-screen flex flex-col">
+        <!-- Шапка: отображает баланс из таблицы users -->
+        <div class="p-5 flex justify-between items-end border-b border-zinc-900 sticky top-0 bg-black z-50">
+            <div>
+                <p id="user-at" class="text-zinc-600 text-[9px] font-bold uppercase tracking-widest">@USER</p>
+                <p id="user-balance" class="text-2xl font-black text-yellow-400 italic">0 ₽</p>
+            </div>
+            <button onclick="location.reload()" class="text-[10px] text-zinc-700 font-bold uppercase">Выход</button>
+        </div>
+
+        <!-- Навигация -->
+        <div class="flex justify-around bg-zinc-950 border-b border-zinc-900">
+            <button onclick="switchTab('market')" id="tab-market" class="tab-btn py-4 px-2 text-[10px] font-black active uppercase">Маркет</button>
+            <button onclick="switchTab('crypto')" id="tab-crypto" class="tab-btn py-4 px-2 text-[10px] font-black text-zinc-500 uppercase">Крипта</button>
+            <button onclick="switchTab('risk')" id="tab-risk" class="tab-btn py-4 px-2 text-[10px] font-black text-zinc-500 uppercase">Риск</button>
+        </div>
+
+        <!-- СЕКЦИЯ: МАРКЕТ (Тянет товары из таблицы market) -->
+        <div id="section-market" class="p-5 space-y-4 pb-20">
+            <div id="market-items" class="space-y-4">
+                <p class="text-zinc-500 text-xs text-center py-10">Синхронизация с базой данных...</p>
+            </div>
+        </div>
+
+        <!-- СЕКЦИЯ: КРИПТА -->
+        <div id="section-crypto" class="hidden p-5 space-y-4">
+            <div class="glass-card p-6 border-yellow-500/10">
+                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Курс кивиКоин</p>
+                <p class="text-xl font-black italic text-yellow-400">142.50 ₽</p>
+            </div>
+            <p class="text-center text-[9px] text-zinc-700 uppercase py-10">Торги приостановлены</p>
+        </div>
+
+        <!-- СЕКЦИЯ: РИСК -->
+        <div id="section-risk" class="hidden p-5">
+            <div class="glass-card p-6 border-red-500/20 text-center">
+                <p class="text-[10px] text-zinc-400 uppercase font-black mb-4">Удвоение баланса (25%)</p>
+                <input id="bet-val" type="number" placeholder="Сумма" class="w-full p-4 mb-4 text-center font-bold text-white">
+                <button onclick="playRisk()" class="w-full bg-yellow-400 text-black py-4 rounded-xl font-black uppercase text-xs">Ставка</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const { Client, Databases, Query } = Appwrite;
+
+// Конфигурация из твоих данных
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('69f253c500057ce0124f'); // Твой Project ID
+
+const databases = new Databases(client);
+const DB_ID = '69f2543d001072173afd'; // Твой Database ID
+const COLL_USERS = 'users';           // Таблица пользователей
+const COLL_MARKET = 'market';         // Таблица товаров
+
+let currentUser = null;
+
+// Вход в систему (использует те же данные, что и банк)
+async function auth() {
+    const code = document.getElementById('login-code').value;
+    const pin = document.getElementById('login-pin').value;
+    
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_USERS, [
+            Query.equal('code', code),
+            Query.equal('pin', pin)
+        ]);
+
+        if (res.documents.length > 0) {
+            currentUser = res.documents[0];
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('main-ui').classList.remove('hidden');
+            updateUI();
+            loadMarket();
+        } else {
+            alert("ДОСТУП ЗАПРЕЩЕН: Проверь КОД и ПИН");
+        }
+    } catch (e) {
+        alert("ОШИБКА ПОДКЛЮЧЕНИЯ");
+    }
+}
+
+function updateUI() {
+    document.getElementById('user-balance').innerText = currentUser.balance.toLocaleString() + ' ₽';
+    document.getElementById('user-at').innerText = '@' + (currentUser.name || currentUser.$id.slice(-6)).toUpperCase();
+}
+
+function switchTab(tab) {
+    ['market', 'crypto', 'risk'].forEach(t => {
+        document.getElementById('section-' + t).classList.toggle('hidden', t !== tab);
+        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+        document.getElementById('tab-' + t).classList.toggle('text-zinc-500', t !== tab);
+    });
+}
+
+// Загрузка товаров из новой базы market
+async function loadMarket() {
+    const container = document.getElementById('market-items');
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_MARKET);
+        container.innerHTML = '';
+        
+        if (res.documents.length === 0) {
+            container.innerHTML = '<p class="text-zinc-600 text-xs text-center py-10 italic">Рынок пуст</p>';
+            return;
+        }
+
+        res.documents.forEach(item => {
+            // Проверяем, не куплен ли товар (ownerId пустой или NULL)
+            const isSold = item.ownerId && item.ownerId !== "NULL";
+            container.innerHTML += `
+                <div class="glass-card p-5 border-zinc-900 flex justify-between items-center ${isSold ? 'opacity-30' : ''}">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-zinc-900 rounded-xl overflow-hidden border border-white/5">
+                            <img src="${item.image}" alt="" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-black uppercase italic text-zinc-200">${item.name}</p>
+                            <p class="text-lg font-black text-yellow-400">${item.price.toLocaleString()} ₽</p>
+                        </div>
+                    </div>
+                    ${isSold ? 
+                        '<span class="text-[8px] text-zinc-600 font-bold uppercase">ПРОДАНО</span>' : 
+                        `<button onclick="buyItem('${item.$id}', ${item.price})" class="bg-yellow-400 text-black px-4 py-2 rounded-lg text-[10px] font-black uppercase hover:bg-white">Купить</button>`
+                    }
+                </div>
+            `;
+        });
+    } catch (e) {
+        container.innerHTML = '<p class="text-red-500 text-center text-xs">Ошибка загрузки данных</p>';
+    }
+}
+
+// Логика покупки с обновлением баланса в таблице users
+async function buyItem(itemId, price) {
+    if (currentUser.balance < price) return alert("НЕДОСТАТОЧНО СРЕДСТВ");
+    if (!confirm("Подтвердить транзакцию?")) return;
+
+    try {
+        const newBalance = currentUser.balance - price;
+        // 1. Списываем деньги у пользователя в таблице users
+        await databases.updateDocument(DB_ID, COLL_USERS, currentUser.$id, { balance: newBalance });
+        
+        // 2. Ставим отметку владельца на товаре в таблице market
+        await databases.updateDocument(DB_ID, COLL_MARKET, itemId, { ownerId: currentUser.$id });
+        
+        currentUser.balance = newBalance;
+        updateUI();
+        loadMarket();
+        alert("ПОКУПКА ЗАВЕРШЕНА");
+    } catch (e) {
+        alert("ОШИБКА ТРАНЗАКЦИИ");
+    }
+}
+
+async function playRisk() {
+    const amount = parseInt(document.getElementById('bet-val').value);
+    if (!amount || amount > currentUser.balance || amount <= 0) return alert("ОШИБКА СУММЫ");
+
+    const win = Math.random() < 0.25;
+    let newBalance = win ? currentUser.balance + (amount * 2) : currentUser.balance - amount;
+
+    try {
+        await databases.updateDocument(DB_ID, COLL_USERS, currentUser.$id, { balance: newBalance });
+        currentUser.balance = newBalance;
+        updateUI();
+        alert(win ? "ВЫИГРЫШ!" : "ПРОИГРЫШ");
+    } catch (e) { alert("ОШИБКА СОХРАНЕНИЯ"); }
+}
+</script>
+</body>
+</html>
