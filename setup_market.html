@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Киви-Загрузчик (Migration Script)</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        #log { border: 1px solid #0f0; padding: 10px; height: 400px; overflow-y: scroll; background: #050505; }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>System: Market Data Injector</h1>
+    <p>Этот скрипт автоматически создаст 42 товара в твоей таблице market.</p>
+    <button onclick="startInjection()">ЗАПУСТИТЬ ЗАГРУЗКУ</button>
+    <hr>
+    <div id="log">Ожидание команды...<br></div>
+
+<script>
+const { Client, Databases } = Appwrite;
+
+const client = new Client()
+    .setEndpoint('https://cloud.appwrite.io/v1')
+    .setProject('69f253c500057ce0124f');
+
+const databases = new Databases(client);
+const DB_ID = '69f2543d001072173afd';
+const COLL_MARKET = 'market';
+
+// Список твоих файлов с GitHub
+const photos = [
+    "photo_2026-04-29_23-50-09.jpg", "photo_2026-04-29_23-50-11.jpg", "photo_2026-04-29_23-50-18.jpg",
+    "photo_2026-04-29_23-50-19.jpg", "photo_2026-04-29_23-50-20%20(2).jpg", "photo_2026-04-29_23-50-20.jpg",
+    "photo_2026-04-29_23-50-21%20(2).jpg", "photo_2026-04-29_23-50-21.jpg", "photo_2026-04-29_23-50-38%20(2).jpg",
+    "photo_2026-04-29_23-50-38.jpg", "photo_2026-04-29_23-50-39.jpg", "photo_2026-04-29_23-50-40%20(2).jpg",
+    "photo_2026-04-29_23-50-40.jpg", "photo_2026-04-29_23-50-42%20(2).jpg", "photo_2026-04-29_23-50-42.jpg",
+    "photo_2026-04-29_23-50-43%20(2).jpg", "photo_2026-04-29_23-50-43.jpg", "photo_2026-04-29_23-50-44%20(2).jpg",
+    "photo_2026-04-29_23-50-44.jpg", "photo_2026-04-29_23-50-45%20(2).jpg", "photo_2026-04-29_23-50-45.jpg",
+    "photo_2026-04-29_23-50-46%20(2).jpg", "photo_2026-04-29_23-50-46.jpg", "photo_2026-04-29_23-50-48%20(2).jpg",
+    "photo_2026-04-29_23-50-48.jpg", "photo_2026-04-29_23-50-49%20(2).jpg", "photo_2026-04-29_23-50-49.jpg",
+    "photo_2026-04-29_23-50-50%20(2).jpg", "photo_2026-04-29_23-50-50.jpg", "photo_2026-04-29_23-50-51%20(2).jpg",
+    "photo_2026-04-29_23-50-51.jpg", "photo_2026-04-29_23-50-52%20(2).jpg", "photo_2026-04-29_23-50-52.jpg",
+    "photo_2026-04-29_23-50-53.jpg", "photo_2026-04-29_23-50-54%20(2).jpg", "photo_2026-04-29_23-50-54.jpg",
+    "photo_2026-04-29_23-50-55%20(2).jpg", "photo_2026-04-29_23-50-55.jpg", "photo_2026-04-29_23-50-56%20(2).jpg",
+    "photo_2026-04-29_23-50-56.jpg", "photo_2026-04-29_23-50-58.jpg", "photo_2026-04-29_23-50-59.jpg"
+];
+
+function log(msg, type = '') {
+    const l = document.getElementById('log');
+    l.innerHTML += `<span class="${type}">${msg}</span><br>`;
+    l.scrollTop = l.scrollHeight;
+}
+
+async function startInjection() {
+    log("Инициализация протокола...");
+    
+    for (let i = 0; i < photos.length; i++) {
+        try {
+            await databases.createDocument(DB_ID, COLL_MARKET, 'unique()', {
+                name: "Киви #" + (i + 1),
+                price: 1000,
+                image: "https://minidlohid-del.github.io/tbankaw/" + photos[i],
+                ownerId: "NULL"
+            });
+            log(`[OK] Товар ${i+1} загружен: ${photos[i]}`, "success");
+        } catch (e) {
+            log(`[ERROR] Ошибка на товаре ${i+1}: ${e.message}`, "error");
+        }
+    }
+    
+    log("--- ЗАГРУЗКА ЗАВЕРШЕНА ---");
+    alert("Готово! Проверь базу Appwrite и можешь удалять этот файл.");
+}
+</script>
+</body>
+</html>
