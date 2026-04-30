@@ -1,0 +1,83 @@
+// Функция регистрации с твоими названиями колонок
+async function register() {
+    const name = document.getElementById('reg-name').value;
+    const pin = document.getElementById('reg-pin').value;
+    const btn = document.getElementById('btn-reg');
+
+    if (!name || pin.length !== 4) return alert("Введите имя и ПИН (4 цифры)");
+
+    btn.disabled = true;
+    btn.innerText = "СОЗДАНИЕ СЧЕТА...";
+
+    try {
+        const pCode = Math.floor(100 + Math.random() * 899).toString();
+        const cNumber = "2026 " + Array.from({length: 3}, () => Math.floor(1000 + Math.random() * 8999)).join(" ");
+        const phoneNum = "+79" + Math.floor(100000000 + Math.random() * 899999999);
+
+        // ВАЖНО: Названия ключей теперь в точности как на твоем скриншоте
+        await databases.createDocument(DB_ID, COLL_ID, ID.unique(), {
+            name: name,
+            pin: pin,
+            personalCode: pCode, // Было 'code', теперь 'personalCode'
+            phone: phoneNum,
+            balance: 5000,
+            cardNumber: cNumber
+        });
+
+        alert(`СУПЕР! Счет открыт.\n\nВАШ ЛИЧНЫЙ КОД: ${pCode}\nЗАПОМНИТЕ ЕГО!`);
+        location.reload();
+    } catch (e) {
+        console.error(e);
+        alert("Ошибка создания: проверьте, что все колонки в Appwrite имеют тип 'string' (кроме balance)");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "ОТКРЫТЬ ЗОЛОТОЙ СЧЕТ";
+    }
+}
+
+// Функция входа тоже обновлена под 'personalCode'
+async function login() {
+    const codeInput = document.getElementById('login-code').value;
+    const pinInput = document.getElementById('login-pin').value;
+    const btn = document.getElementById('btn-login');
+
+    if (!codeInput || !pinInput) return alert("Введите данные");
+
+    btn.disabled = true;
+    btn.innerText = "ПРОВЕРКА...";
+
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_ID, [
+            Query.equal('personalCode', codeInput), // Используем 'personalCode'
+            Query.equal('pin', pinInput)
+        ]);
+
+        if (res.documents.length > 0) {
+            currentUser = res.documents[0];
+            renderInterface();
+        } else {
+            alert("Неверный КОД или ПИН");
+        }
+    } catch (e) {
+        alert("Ошибка входа: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "ВОЙТИ В СИСТЕМУ";
+    }
+}
+
+// Обновляем отображение данных
+function renderInterface() {
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('main-interface').classList.remove('hidden');
+    
+    document.getElementById('user-name-top').innerText = currentUser.name;
+    document.getElementById('user-phone-top').innerText = currentUser.phone;
+    document.getElementById('balance-disp').innerText = (currentUser.balance || 0).toLocaleString() + " ₽";
+    document.getElementById('card-short-disp').innerText = "•••• " + (currentUser.cardNumber || "0000").slice(-4);
+    
+    // Реквизиты в соответствующей вкладке
+    document.getElementById('full-card-num').innerText = currentUser.cardNumber;
+    document.getElementById('full-phone').innerText = currentUser.phone;
+    document.getElementById('full-code-info').innerText = currentUser.personalCode;
+}
