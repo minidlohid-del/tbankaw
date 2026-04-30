@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIWI ELITE | FIXED BTN</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        :root { --main-green: #00ff00; --bg-dark: #000; --card-bg: #111; --red: #ff3333; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-dark); color: white; margin: 0; padding-bottom: 80px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #080808; border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 100; }
+        .search-container { position: relative; }
+        .search-box input { background: #1a1a1a; border: 1px solid #333; color: white; padding: 8px 12px; border-radius: 20px; width: 140px; outline: none; }
+        
+        #search-results { position: absolute; top: 45px; left: 0; width: 220px; background: #080808; border: 1px solid #333; border-radius: 12px; display: none; max-height: 250px; overflow-y: auto; z-index: 101; }
+        .search-item { padding: 12px; border-bottom: 1px solid #1a1a1a; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .search-item:hover { background: #111; color: var(--main-green); }
+
+        .container { padding: 15px; }
+        .list-item { display: flex; align-items: center; background: var(--card-bg); margin-bottom: 10px; padding: 12px; border-radius: 12px; border: 1px solid #222; }
+        .circle-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin-right: 15px; border: 1px solid var(--main-green); }
+        
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: #080808; display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #222; }
+        .nav-btn { background: none; border: none; color: #555; font-size: 0.75em; cursor: pointer; text-transform: uppercase; font-weight: bold; }
+        .nav-btn.active { color: var(--main-green); }
+
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: none; flex-direction: column; padding: 20px; z-index: 200; overflow-y: auto; }
+        
+        /* Кнопки */
+        .action-btn { padding: 14px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; font-size: 1em; }
+        .btn-buy { background: var(--main-green); color: black; }
+        .btn-sell { background: var(--red); color: white; }
+        
+        .nft-grid-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }
+        .nft-mini-card { background: #111; padding: 5px; border-radius: 8px; text-align: center; font-size: 0.7em; border: 1px solid #222; }
+        .nft-mini-img { width: 100%; aspect-ratio: 1; border-radius: 5px; object-fit: cover; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <!-- Экран входа (Кнопка возвращена в нормальное состояние) -->
+    <div id="auth-screen" style="position:fixed; inset:0; background:#000; z-index:300; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <h1 style="color:var(--main-green); letter-spacing: 2px;">KIWI ELITE</h1>
+        <input type="text" id="user-code" placeholder="ВАШ ID" style="padding:14px; margin:10px; width:260px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <input type="password" id="user-pin" placeholder="PIN-КОД" style="padding:14px; margin:10px; width:260px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <!-- ТУТ ИСПРАВЛЕНО: Кнопка шириной 290px как раньше -->
+        <button class="action-btn btn-buy" style="width:290px; margin-top:10px" onclick="login()">ВОЙТИ В СИСТЕМУ</button>
+    </div>
+
+    <div id="main-app" style="display:none;">
+        <div class="header">
+            <div class="search-container">
+                <div class="search-box">
+                    <input type="text" id="search-user" placeholder="Поиск @id..." oninput="liveSearch()">
+                </div>
+                <div id="search-results"></div>
+            </div>
+            <div style="color:var(--main-green); font-weight:bold; font-size: 1.2em;"><span id="header-balance">0</span> ₽</div>
+        </div>
+
+        <div class="container" id="content-area"></div>
+
+        <nav class="bottom-nav">
+            <div class="nav-btn active" onclick="showTab('crypto')">Биржа</div>
+            <div class="nav-btn" onclick="showTab('nft')">NFT</div>
+            <div class="nav-btn" onclick="showTab('inventory')">Инвентарь</div>
+            <div class="nav-btn" onclick="showTab('profile')">Профиль</div>
+        </nav>
+    </div>
+
+    <div id="user-modal" class="modal">
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+            <h2 id="view-user-id" style="color:var(--main-green); margin:0;"></h2>
+            <button onclick="closeUserModal()" style="background:none; border:none; color:white; font-size:2em;">&times;</button>
+        </div>
+        <div id="view-user-nfts" style="margin-top:20px;">
+            <p style="opacity:0.5">NFT киви игрока:</p>
+            <div id="nft-display-grid" class="nft-grid-mini"></div>
+        </div>
+    </div>
+
+<script>
+const { Client, Databases, Query } = Appwrite;
+const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
+const databases = new Databases(client);
+
+const DB_ID = 'bank_db';
+const COLL_USERS = 'users';
+const COLL_MARKET = 'market';
+
+let currentUser = null;
+
+async function login() {
+    const code = document.getElementById('user-code').value;
+    const pin = document.getElementById('user-pin').value;
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_USERS, [Query.equal('personalCode', code), Query.equal('pin', pin)]);
+        if(res.documents.length > 0) {
+            currentUser = res.documents[0];
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+            document.getElementById('header-balance').innerText = currentUser.balance.toLocaleString();
+            showTab('crypto');
+        } else { alert("Неверный ID или PIN"); }
+    } catch(e) { alert("Ошибка связи с базой"); }
+}
+
+async function liveSearch() {
+    const val = document.getElementById('search-user').value.replace('@', '');
+    const resBox = document.getElementById('search-results');
+    if(val.length < 1) { resBox.style.display = 'none'; return; }
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_USERS, [Query.startsWith('personalCode', val)]);
+        resBox.innerHTML = '';
+        if(res.documents.length > 0) {
+            resBox.style.display = 'block';
+            res.documents.forEach(user => {
+                const d = document.createElement('div');
+                d.className = 'search-item';
+                d.innerHTML = `👤 @${user.personalCode}`;
+                d.onclick = () => showUserProfile(user);
+                resBox.appendChild(d);
+            });
+        } else { resBox.style.display = 'none'; }
+    } catch(e) {}
+}
+
+async function showUserProfile(user) {
+    document.getElementById('search-results').style.display = 'none';
+    document.getElementById('view-user-id').innerText = '@' + user.personalCode;
+    const grid = document.getElementById('nft-display-grid');
+    grid.innerHTML = '';
+    const nftRes = await databases.listDocuments(DB_ID, COLL_MARKET, [Query.equal('ownerId', user.$id)]);
+    if(nftRes.documents.length === 0) {
+        grid.innerHTML = '<p style="grid-column: 1/4; opacity:0.3; text-align:center;">У игрока нет NFT</p>';
+    } else {
+        nftRes.documents.forEach(nft => {
+            grid.innerHTML += `
+                <div class="nft-mini-card">
+                    <img src="${nft.image}" class="nft-mini-img">
+                    <div>${nft.name}</div>
+                </div>
+            `;
+        });
+    }
+    document.getElementById('user-modal').style.display = 'flex';
+}
+
+function closeUserModal() { document.getElementById('user-modal').style.display = 'none'; }
+
+function showTab(tab) {
+    const container = document.getElementById('content-area');
+    container.innerHTML = `<h2 style="color:var(--main-green)">${tab.toUpperCase()}</h2>`;
+    if(tab === 'inventory') renderInventory();
+}
+
+async function renderInventory() {
+    const container = document.getElementById('content-area');
+    const res = await databases.listDocuments(DB_ID, COLL_MARKET, [Query.equal('ownerId', currentUser.$id)]);
+    if(res.documents.length === 0) { container.innerHTML += '<p>Инвентарь пуст.</p>'; return; }
+    res.documents.forEach(nft => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.style.flexDirection = 'column';
+        div.innerHTML = `
+            <div style="display:flex; width:100%; align-items:center;">
+                <img src="${nft.image}" class="circle-img">
+                <div style="flex-grow:1"><b>${nft.name}</b></div>
+                <div style="color:var(--main-green)">${nft.price} ₽</div>
+            </div>
+            <div style="display:flex; gap:10px; width:100%; margin-top:12px;">
+                <button class="action-btn btn-sell" style="flex:1" onclick="processSale('${nft.$id}', ${nft.price})">ПРОДАТЬ</button>
+                <button class="action-btn" style="flex:1; background:#333; color:white;" onclick="processGift('${nft.$id}')">ПОДАРИТЬ</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function processGift(nftId) {
+    const targetCode = prompt("Введите @ID получателя:");
+    if(!targetCode) return;
+    try {
+        const userRes = await databases.listDocuments(DB_ID, COLL_USERS, [Query.equal('personalCode', targetCode.replace('@', ''))]);
+        if(userRes.documents.length === 0) { alert("Игрок не найден!"); return; }
+        await databases.updateDocument(DB_ID, COLL_MARKET, nftId, { ownerId: userRes.documents[0].$id });
+        alert("NFT передано!");
+        showTab('inventory');
+    } catch(e) { alert("Ошибка"); }
+}
+
+async function processSale(nftId, price) {
+    if(!confirm(`Продать за ${price} ₽?`)) return;
+    try {
+        const newBalance = currentUser.balance + price;
+        await databases.updateDocument(DB_ID, COLL_USERS, currentUser.$id, { balance: newBalance });
+        await databases.updateDocument(DB_ID, COLL_MARKET, nftId, { ownerId: "" });
+        currentUser.balance = newBalance;
+        document.getElementById('header-balance').innerText = newBalance.toLocaleString();
+        showTab('inventory');
+    } catch(e) { alert("Ошибка"); }
+}
+</script>
+</body>
+</html>
