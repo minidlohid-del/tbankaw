@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KIWI ELITE | NO DELAYS</title>
+    <title>KIWI ELITE | FULL SHOP</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
     <style>
         :root { --green: #00ff00; --bg: #000; --card: #111; --red: #ff3333; --blue: #00ccff; }
@@ -11,7 +11,7 @@
         .header { padding: 15px; background: #0a0a0a; border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 100; }
         .row { display: flex; justify-content: space-between; align-items: center; }
         .item { display: flex; align-items: center; background: var(--card); margin: 10px; padding: 12px; border-radius: 12px; border: 1px solid #222; transition: 0.2s; }
-        .img-box { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; overflow: hidden; border: 1px solid var(--green); flex-shrink: 0; }
+        .img-box { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; overflow: hidden; border: 1px solid var(--green); flex-shrink: 0; background: #222; }
         .img-box img { width: 100%; height: 100%; object-fit: cover; }
         .nav { position: fixed; bottom: 0; width: 100%; background: #0a0a0a; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 1000; }
         .n-btn { background: none; border: none; color: #555; font-size: 0.7em; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
@@ -60,6 +60,25 @@ const DB_ID = 'bank_db', USERS = 'users', MARKET = 'market';
 let user = null;
 let clickCounter = 0;
 
+// МАССИВ ВСЕХ ТВОИХ ФОТОГРАФИЙ КИВИ
+const allKiwiPhotos = [
+    'photo_2026-04-29_23-50-09.jpg', 'photo_2026-04-29_23-50-11.jpg', 'photo_2026-04-29_23-50-18.jpg',
+    'photo_2026-04-29_23-50-19.jpg', 'photo_2026-04-29_23-50-20.jpg', 'photo_2026-04-29_23-50-20 (2).jpg',
+    'photo_2026-04-29_23-50-21.jpg', 'photo_2026-04-29_23-50-21 (2).jpg', 'photo_2026-04-29_23-50-38.jpg',
+    'photo_2026-04-29_23-50-38 (2).jpg', 'photo_2026-04-29_23-50-39.jpg', 'photo_2026-04-29_23-50-40.jpg',
+    'photo_2026-04-29_23-50-40 (2).jpg', 'photo_2026-04-29_23-50-42.jpg', 'photo_2026-04-29_23-50-42 (2).jpg',
+    'photo_2026-04-29_23-50-43.jpg', 'photo_2026-04-29_23-50-43 (2).jpg', 'photo_2026-04-29_23-50-44.jpg',
+    'photo_2026-04-29_23-50-44 (2).jpg', 'photo_2026-04-29_23-50-45.jpg', 'photo_2026-04-29_23-50-45 (2).jpg',
+    'photo_2026-04-29_23-50-46.jpg', 'photo_2026-04-29_23-50-46 (2).jpg', 'photo_2026-04-29_23-50-48.jpg',
+    'photo_2026-04-29_23-50-48 (2).jpg', 'photo_2026-04-29_23-50-49.jpg', 'photo_2026-04-29_23-50-49 (2).jpg',
+    'photo_2026-04-29_23-50-50.jpg', 'photo_2026-04-29_23-50-50 (2).jpg', 'photo_2026-04-29_23-50-51.jpg',
+    'photo_2026-04-29_23-50-51 (2).jpg', 'photo_2026-04-29_23-50-52.jpg', 'photo_2026-04-29_23-50-52 (2).jpg',
+    'photo_2026-04-29_23-50-53.jpg', 'photo_2026-04-29_23-50-53 (2).jpg', 'photo_2026-04-29_23-50-54.jpg',
+    'photo_2026-04-29_23-50-54 (2).jpg', 'photo_2026-04-29_23-50-55.jpg', 'photo_2026-04-29_23-50-55 (2).jpg',
+    'photo_2026-04-29_23-50-56.jpg', 'photo_2026-04-29_23-50-56 (2).jpg', 'photo_2026-04-29_23-50-58.jpg',
+    'photo_2026-04-29_23-50-59.jpg'
+];
+
 const rnd = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 async function login() {
@@ -92,10 +111,10 @@ async function tab(t, btn) {
         });
     }
     if(t === 'nft') {
-        const photos = ['photo_2026-04-29_23-50-09.jpg', 'photo_2026-04-29_23-50-18.jpg', 'photo_2026-04-29_23-50-21.jpg'];
-        photos.forEach((img) => {
+        // Выводим все фото из огромного массива
+        allKiwiPhotos.forEach((img, i) => {
             const price = rnd(2000, 15000);
-            s.innerHTML += `<div class="item"><div class="img-box"><img src="${img}"></div><div style="flex:1"><b>КИВИ NFT #${rnd(100,999)}</b><br><span style="color:var(--blue)">${price} ₽</span></div><button class="btn buy" onclick="buyAsset('NFT КИВИ', ${price}, '${img}', this)">КУПИТЬ</button></div>`;
+            s.innerHTML += `<div class="item"><div class="img-box"><img src="${img}" onerror="this.src='photo_2026-04-29_23-50-11.jpg'"></div><div style="flex:1"><b>КИВИ NFT #${i+1}</b><br><span style="color:var(--blue)">${price} ₽</span></div><button class="btn buy" onclick="buyAsset('NFT КИВИ #${i+1}', ${price}, '${img}', this)">КУПИТЬ</button></div>`;
         });
     }
     if(t === 'work') {
@@ -111,10 +130,10 @@ async function tab(t, btn) {
             res.documents.forEach(doc => {
                 s.innerHTML += `<div class="item" id="c-${doc.$id}"><div class="img-box"><img src="${doc.image}"></div><div style="flex:1"><b>${doc.name}</b><br><small style="color:gray">ЦЕНА: ${doc.price} ₽</small></div><button class="btn sell" onclick="sellItem('${doc.$id}', ${doc.price}, this)">ПРОДАТЬ</button></div>`;
             });
-        } catch(e) { s.innerHTML += "<p style='color:red; text-align:center;'>Ошибка загрузки</p>"; }
+        } catch(e) { s.innerHTML += "<p style='color:red; text-align:center;'>Ошибка загрузки инвентаря</p>"; }
     }
     if(t === 'me') {
-        const mBal = user.marketBalance || 0;
+        const mBal = parseInt(user.marketBalance) || 0;
         s.innerHTML += `<div style="padding:20px;"><div class="item" style="flex-direction:column; padding:40px; text-align:center; background:#050505;">
             <p style="color:gray; font-size:0.9em;">ДОСТУПНО К ВЫВОДУ:</p>
             <h1 id="me-bal" style="color:var(--green); margin:15px 0;">${mBal.toLocaleString()} ₽</h1>
@@ -124,26 +143,19 @@ async function tab(t, btn) {
     }
 }
 
-// 1. АБСОЛЮТНО СВОБОДНЫЕ КЛИКИ
 function mine() {
     clickCounter++;
     document.getElementById('clicks-val').innerText = clickCounter;
-    
-    // Каждые 20 кликов кидаем запрос в базу (БЕЗ блокировки кнопки)
     if(clickCounter % 20 === 0) {
         backgroundSyncReward();
     }
 }
 
-// Фоновое начисление
 async function backgroundSyncReward() {
     if(!user) return;
     try {
-        // Оптимистично прибавляем баланс сразу
-        user.marketBalance = (user.marketBalance || 0) + 50;
-        updateUI(); // Баланс наверху обновляется сразу
-
-        // Параллельно пишем в базу баланс и создаем предмет (работает в 2 раза быстрее)
+        user.marketBalance = (parseInt(user.marketBalance) || 0) + 50;
+        updateUI();
         await Promise.all([
             db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance }),
             db.createDocument(DB_ID, MARKET, ID.unique(), { 
@@ -153,19 +165,14 @@ async function backgroundSyncReward() {
                 image: 'photo_2026-04-29_23-50-20.jpg' 
             })
         ]);
-    } catch(e) {
-        console.error("Ошибка сохранения кликов в фоне", e);
-    }
+    } catch(e) { console.error("Ошибка сохранения кликов в фоне"); }
 }
 
-// 2. ОПТИМИСТИЧНАЯ ПОКУПКА (Деньги списываются мгновенно, потом запрос)
 async function buyAsset(n, p, i, btn) {
     if(user.balance < p) return;
-    
-    // Визуально сразу меняем интерфейс
     btn.classList.add('disabled');
     btn.innerText = "КУПЛЕНО";
-    user.balance -= p;
+    user.balance = parseInt(user.balance) - p;
     updateUI();
 
     try {
@@ -174,24 +181,17 @@ async function buyAsset(n, p, i, btn) {
             db.createDocument(DB_ID, MARKET, ID.unique(), { name:n, price:p, ownerId:user.$id, image:i })
         ]);
     } catch(e) { 
-        console.error("Ошибка покупки", e);
-        // Откат, если база легла
-        user.balance += p; 
-        updateUI();
-        btn.innerText = "КУПИТЬ";
-        btn.classList.remove('disabled');
-        alert("ОШИБКА БАЗЫ! Проверь права Appwrite.");
+        user.balance += p; updateUI(); btn.innerText = "КУПИТЬ"; btn.classList.remove('disabled');
+        alert("ОШИБКА! Appwrite заблокировал сохранение. Настрой права (Roles).");
     }
 }
 
-// 3. ОПТИМИСТИЧНАЯ ПРОДАЖА (Предмет исчезает мгновенно)
 async function sellItem(id, price, btn) {
     const itemRow = document.getElementById(`c-${id}`);
     const profit = Math.floor(price * 0.1);
     
-    // Визуально сразу удаляем и начисляем деньги
     itemRow.style.display = 'none';
-    user.marketBalance = (user.marketBalance || 0) + profit;
+    user.marketBalance = (parseInt(user.marketBalance) || 0) + profit;
     updateUI();
 
     try {
@@ -199,28 +199,30 @@ async function sellItem(id, price, btn) {
             db.deleteDocument(DB_ID, MARKET, id),
             db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance })
         ]);
-        itemRow.remove(); // Окончательно удаляем из DOM
+        itemRow.remove(); 
     } catch(e) {
-        console.error("Ошибка удаления", e);
-        // Откат, если база выдала ошибку
-        user.marketBalance -= profit;
-        updateUI();
-        itemRow.style.display = 'flex';
-        alert("ОШИБКА УДАЛЕНИЯ! В настройках Appwrite коллекции MARKET обязательно поставь Role: Any.");
+        user.marketBalance -= profit; updateUI(); itemRow.style.display = 'flex';
+        alert("ОШИБКА УДАЛЕНИЯ! В базе данных Appwrite для коллекции MARKET не стоит галочка Delete для роли Any.");
     }
 }
 
-// 4. ВЫВОД СРЕДСТВ
 async function withdraw(btn) {
-    const mBal = user.marketBalance || 0;
-    if(mBal < 500) return alert("НУЖНО МИНИМУМ 500 ₽ НА МАРКЕТЕ");
-    
     btn.classList.add('disabled');
-    btn.innerText = "ПЕРЕВОД...";
+    btn.innerText = "ПРОВЕРКА...";
     
     try {
-        const cleanMoney = Math.floor(mBal * 0.1); // 10% от суммы маркета
-        user.balance = (user.balance || 0) + cleanMoney;
+        // Принудительно запрашиваем точный баланс с сервера перед выводом
+        user = await db.getDocument(DB_ID, USERS, user.$id);
+        const mBal = parseInt(user.marketBalance) || 0;
+        
+        if(mBal < 500) {
+            btn.classList.remove('disabled');
+            btn.innerText = "ВЫВЕСТИ В БАНК";
+            return alert(`НУЖНО МИНИМУМ 500 ₽! У тебя сейчас: ${mBal} ₽`);
+        }
+        
+        const cleanMoney = Math.floor(mBal * 0.1); 
+        user.balance = (parseInt(user.balance) || 0) + cleanMoney;
         user.marketBalance = 0;
         
         await db.updateDocument(DB_ID, USERS, user.$id, { 
@@ -232,7 +234,7 @@ async function withdraw(btn) {
         document.getElementById('me-bal').innerText = "0 ₽";
         alert(`УСПЕШНО ПЕРЕВЕДЕНО: +${cleanMoney} ₽ в БАНК`);
     } catch(e) { 
-        alert("ОШИБКА ВЫВОДА"); 
+        alert("ОШИБКА ВЫВОДА! База данных заблокировала обновление."); 
     } finally {
         btn.classList.remove('disabled');
         btn.innerText = "ВЫВЕСТИ В БАНК";
