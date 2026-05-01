@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIWI ELITE | UNIQUE RANDOM ID</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        :root { --green: #00ff00; --bg: #000; --card: #111; --red: #ff3333; --blue: #3399ff; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; padding-bottom: 80px; overflow-x: hidden; }
+        .header { padding: 10px 15px; background: #080808; border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 100; }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        .search-container { width: 100%; position: relative; margin-top: 10px; }
+        .search-input { width: 100%; background: #1a1a1a; border: 1px solid #333; color: white; padding: 12px; border-radius: 10px; outline: none; box-sizing: border-box; }
+        #search-results { position: absolute; width: 100%; background: #151515; z-index: 1000; border-radius: 0 0 10px 10px; display: none; border: 1px solid var(--green); max-height: 200px; overflow-y: auto; }
+        .search-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; }
+        .container { padding: 15px; }
+        .item { display: flex; align-items: center; background: var(--card); margin-bottom: 10px; padding: 12px; border-radius: 15px; border: 1px solid #222; }
+        .img-box { width: 55px; height: 55px; border-radius: 12px; margin-right: 15px; overflow: hidden; border: 1px solid var(--green); flex-shrink: 0; background: #222; }
+        .img-box img { width: 100%; height: 100%; object-fit: cover; }
+        .nav { position: fixed; bottom: 0; width: 100%; background: #080808; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 100; }
+        .n-btn { background: none; border: none; color: #555; font-size: 0.7em; font-weight: bold; cursor: pointer; }
+        .n-btn.active { color: var(--green); }
+        .btn { padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .buy { background: var(--green); color: black; }
+        .sell { background: var(--red); color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="auth" style="position:fixed; inset:0; background:#000; z-index:2000; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <h1 style="color:var(--green)">KIWI ELITE</h1>
+        <input type="text" id="cid" placeholder="ЦИФРЫ КАРТЫ" style="padding:15px; margin:5px; width:270px; background:#111; border:1px solid #333; color:white; border-radius:10px; text-align:center;">
+        <input type="password" id="pin" placeholder="PIN" style="padding:15px; margin:5px; width:270px; background:#111; border:1px solid #333; color:white; border-radius:10px; text-align:center;">
+        <button class="btn buy" style="width:300px; margin-top:15px" onclick="login()">ВОЙТИ</button>
+    </div>
+
+    <div id="app" style="display:none;">
+        <div class="header">
+            <div class="row">
+                <div style="font-size: 0.85em; opacity: 0.9;">ТВОЙ ID: <span id="pub-id" style="color:var(--green); font-weight: 900;">...</span></div>
+                <div style="text-align: right;">
+                    <div style="color:var(--green); font-weight:bold;"><span id="bal-main">0</span> ₽</div>
+                    <div style="color:var(--blue); font-size:0.8em;"><span id="bal-market">0</span> ₽</div>
+                </div>
+            </div>
+            <div class="search-container">
+                <input type="text" class="search-input" id="search-input" placeholder="Найти игрока по ID..." oninput="liveSearch()">
+                <div id="search-results"></div>
+            </div>
+        </div>
+
+        <div class="container" id="screen"></div>
+
+        <nav class="nav">
+            <button class="n-btn active" onclick="tab('coins')">БИРЖА</button>
+            <button class="n-btn" onclick="tab('nfts')">МАРКЕТ</button>
+            <button class="n-btn" onclick="tab('work')">РАБОТА</button>
+            <button class="n-btn" onclick="tab('inv')">СКЛАД</button>
+            <button class="n-btn" onclick="tab('me')">ПРОФИЛЬ</button>
+        </nav>
+    </div>
+
+<script>
+const { Client, Databases, Query, ID } = Appwrite;
+const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
+const db = new Databases(client);
+const DB_ID = 'bank_db', USERS = 'users', MARKET = 'market';
+
+let user = null;
+let clicks = 0;
+
+async function login() {
+    const c = String(document.getElementById('cid').value), p = String(document.getElementById('pin').value);
+    if(!c || !p) return;
+    try {
+        const res = await db.listDocuments(DB_ID, USERS, [Query.equal('personalCode', c)]);
+        
+        if(res.documents.length > 0) {
+            // Пользователь найден — берем его сохраненный рандомный ID
+            user = res.documents[0];
+            if(String(user.pin) !== p) return alert("Неверный PIN");
+        } else {
+            // НОВЫЙ ПОЛЬЗОВАТЕЛЬ — Генерируем рандомный ID один раз!
+            const randomDigits = Math.floor(100000 + Math.random() * 899999);
+            const genID = "ID" + randomDigits; 
+            
+            user = await db.createDocument(DB_ID, USERS, ID.unique(), { 
+                personalCode: c, 
+                pin: p, 
+                balance: 1500, 
+                publicID: genID, // Сохраняем в базу
+                marketBalance: 0 
+            });
+        }
+        startApp();
+    } catch(e) { alert("Ошибка входа"); }
+}
+
+function startApp() {
+    document.getElementById('auth').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    // Выводим ТОЛЬКО сохраненный рандомный ID из базы
+    document.getElementById('pub-id').innerText = user.publicID;
+    updateUI(); tab('coins');
+}
+
+function updateUI() { 
+    document.getElementById('bal-main').innerText = Math.floor(user.balance).toLocaleString(); 
+    document.getElementById('bal-market').innerText = Math.floor(user.marketBalance || 0).toLocaleString(); 
+}
+
+async function tab(t) {
+    const screen = document.getElementById('screen');
+    screen.innerHTML = `<h2 style="color:var(--green);">${t.toUpperCase()}</h2>`;
+    document.querySelectorAll('.n-btn').forEach(b => b.classList.remove('active'));
+    
+    if(t === 'coins') renderExchange();
+    if(t === 'nfts') renderNFTs();
+    if(t === 'work') renderWork();
+    if(t === 'inv') renderInventory();
+    if(t === 'me') renderProfile();
+}
+
+// Биржа с РАЗНЫМИ ценами
+function renderExchange() {
+    const screen = document.getElementById('screen');
+    const coins = ["BTC-K", "ETH-K", "SOL-K", "BNB-K", "TON-K"];
+    coins.forEach((name, i) => {
+        let base = (i + 1) * 2000;
+        let randomPrice = base + Math.floor(Math.random() * 1500); // Рандомная цена
+        screen.innerHTML += `
+            <div class="item">
+                <div class="img-box"><img src="photo_2026-04-29_23-50-11.jpg"></div>
+                <div style="flex:1"><b>${name}</b><br><small>${randomPrice} ₽</small></div>
+                <button class="btn buy" onclick="buyAsset('${name}', ${randomPrice}, 'photo_2026-04-29_23-50-11.jpg')">КУПИТЬ</button>
+            </div>`;
+    });
+}
+
+// Работа (Майнинг)
+function renderWork() {
+    document.getElementById('screen').innerHTML += `
+        <div style="text-align:center; padding:30px;">
+            <h1 id="click-count" style="color:var(--green); font-size:4em; margin:0;">0</h1>
+            <button onclick="mine()" style="width:160px; height:160px; border-radius:50%; border:5px solid var(--green); background:none; color:var(--green); font-size:1.5em; font-weight:bold; cursor:pointer;">МАЙНИТЬ</button>
+            <p style="color:gray; margin-top:20px;">10 кликов = +30₽ на МАРКЕТ<br>15 кликов = Выпадение Киви</p>
+        </div>`;
+}
+
+async function mine() {
+    clicks++;
+    document.getElementById('click-count').innerText = clicks;
+    if(clicks % 10 === 0) {
+        user.marketBalance = (user.marketBalance || 0) + 30;
+        updateUI();
+        await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance });
+    }
+    if(clicks % 15 === 0) {
+        await db.createDocument(DB_ID, MARKET, ID.unique(), { 
+            name: "Майнинг Киви", price: 60, ownerId: user.$id, image: "photo_2026-04-29_23-50-11.jpg" 
+        });
+    }
+}
+
+// Продажа (удаление из базы и с экрана)
+async function sellItem(id, p) {
+    const earn = Math.floor(p * 0.8);
+    user.marketBalance = (user.marketBalance || 0) + earn;
+    updateUI();
+    try {
+        await db.deleteDocument(DB_ID, MARKET, id);
+        await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance });
+        const el = document.getElementById(`item-${id}`);
+        if(el) el.remove(); // Исчезает сразу
+    } catch(e) { alert("Ошибка БД при продаже"); }
+}
+
+async function buyAsset(name, price, img) {
+    if(user.balance < price) return alert("Нет денег в Банке");
+    user.balance -= price;
+    updateUI();
+    try {
+        await db.createDocument(DB_ID, MARKET, ID.unique(), { name: name, price: price, ownerId: user.$id, image: img });
+        await db.updateDocument(DB_ID, USERS, user.$id, { balance: user.balance });
+        alert("Куплено!");
+    } catch(e) {}
+}
+
+async function renderInventory() {
+    const screen = document.getElementById('screen');
+    try {
+        const res = await db.listDocuments(DB_ID, MARKET, [Query.equal('ownerId', user.$id)]);
+        if(res.documents.length === 0) screen.innerHTML += "<p>Пусто</p>";
+        res.documents.forEach(doc => {
+            screen.innerHTML += `
+                <div class="item" id="item-${doc.$id}">
+                    <div class="img-box"><img src="${doc.image}"></div>
+                    <div style="flex:1"><b>${doc.name}</b></div>
+                    <button class="btn sell" onclick="sellItem('${doc.$id}', ${doc.price})">ПРОДАТЬ</button>
+                </div>`;
+        });
+    } catch(e) {}
+}
+
+async function withdraw() {
+    const mb = user.marketBalance || 0;
+    if(mb < 500) return alert("Минимальный вывод: 500 ₽");
+    const resAmount = Math.floor(mb * 0.7); // 30% комиссия
+    if(confirm(`Вывести ${mb} ₽?\nЧистыми (с комиссией): ${resAmount} ₽`)) {
+        user.balance += resAmount;
+        user.marketBalance = 0;
+        updateUI();
+        await db.updateDocument(DB_ID, USERS, user.$id, { balance: user.balance, marketBalance: 0 });
+        tab('me');
+    }
+}
+
+function renderProfile() {
+    document.getElementById('screen').innerHTML += `
+        <div style="background:#111; padding:20px; border-radius:15px; border:1px solid #222; text-align:center;">
+            <p style="color:gray;">ТВОЙ ПЕРСОНАЛЬНЫЙ ID</p>
+            <h2 style="color:var(--green); font-size:2.5em; margin:10px 0;">${user.publicID}</h2>
+            <div style="margin-top:20px;">
+                <p>БАНК: ${user.balance} ₽</p>
+                <p>МАРКЕТ: ${user.marketBalance || 0} ₽</p>
+            </div>
+            <button class="btn buy" style="width:100%; padding:15px; margin-top:10px" onclick="withdraw()">ВЫВЕСТИ (ОТ 500)</button>
+        </div>`;
+}
+
+async function liveSearch() {
+    const val = document.getElementById('search-input').value.trim();
+    const resDiv = document.getElementById('search-results');
+    if(val.length < 2) { resDiv.style.display = 'none'; return; }
+    try {
+        const query = val.toUpperCase().startsWith('ID') ? val : "ID" + val;
+        const r = await db.listDocuments(DB_ID, USERS, [Query.startsWith('publicID', query)]);
+        resDiv.innerHTML = '';
+        if(r.documents.length > 0) {
+            resDiv.style.display = 'block';
+            r.documents.forEach(u => {
+                const item = document.createElement('div');
+                item.className = 'search-item';
+                item.innerHTML = `👤 ${u.publicID}`;
+                item.onclick = () => alert(`Игрок: ${u.publicID}\nБаланс: ${u.balance} ₽`);
+                resDiv.appendChild(item);
+            });
+        }
+    } catch(e) {}
+}
+</script>
+</body>
+</html>
