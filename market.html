@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KIWI ELITE | FINAL FIX</title>
+    <title>KIWI ELITE | ULTRA STABLE</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
     <style>
         :root { --green: #00ff00; --bg: #000; --card: #111; --red: #ff3333; --blue: #00ccff; }
@@ -13,15 +13,15 @@
         .item { display: flex; align-items: center; background: var(--card); margin: 10px; padding: 12px; border-radius: 12px; border: 1px solid #222; }
         .img-box { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; overflow: hidden; border: 1px solid var(--green); flex-shrink: 0; }
         .img-box img { width: 100%; height: 100%; object-fit: cover; }
-        .nav { position: fixed; bottom: 0; width: 100%; background: #0a0a0a; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; }
+        .nav { position: fixed; bottom: 0; width: 100%; background: #0a0a0a; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; z-index: 1000; }
         .n-btn { background: none; border: none; color: #555; font-size: 0.7em; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         .n-btn.active { color: var(--green); }
         .btn { padding: 8px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
         .buy { background: var(--green); color: black; }
         .sell { background: var(--red); color: white; }
-        .mine-btn { width: 150px; height: 150px; border-radius: 50%; border: 4px solid var(--green); background: none; color: var(--green); font-size: 1.5em; font-weight: bold; cursor: pointer; margin-top: 20px; }
-        .mine-btn:active { transform: scale(0.95); }
-        .loading { opacity: 0.5; pointer-events: none; }
+        .mine-btn { width: 150px; height: 150px; border-radius: 50%; border: 4px solid var(--green); background: none; color: var(--green); font-size: 1.5em; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.1s; }
+        .mine-btn:active { transform: scale(0.95); background: rgba(0,255,0,0.1); }
+        .loading { opacity: 0.5; pointer-events: none !important; }
     </style>
 </head>
 <body>
@@ -36,8 +36,8 @@
     <div id="app" style="display:none;">
         <div class="header">
             <div class="row">
-                <div style="font-size:0.8em;">БАНК: <span id="bal-main" style="color:var(--green);">0 ₽</span></div>
-                <div style="font-size:0.8em;">МАРКЕТ: <span id="bal-market" style="color:var(--blue);">0 ₽</span></div>
+                <div style="font-size:0.8em; color:gray;">БАНК: <span id="bal-main" style="color:var(--green); font-weight:bold;">0 ₽</span></div>
+                <div style="font-size:0.8em; color:gray;">МАРКЕТ: <span id="bal-market" style="color:var(--blue); font-weight:bold;">0 ₽</span></div>
             </div>
         </div>
         <div id="screen"></div>
@@ -57,36 +57,35 @@ const db = new Databases(client);
 const DB_ID = 'bank_db', USERS = 'users', MARKET = 'market';
 
 let user = null;
-let clicks = 0;
+let localClicks = 0;
+let isProcessing = false;
+
 const kiwiPhotos = [
     'photo_2026-04-29_23-50-09.jpg', 'photo_2026-04-29_23-50-11.jpg', 'photo_2026-04-29_23-50-18.jpg', 
     'photo_2026-04-29_23-50-19.jpg', 'photo_2026-04-29_23-50-20.jpg', 'photo_2026-04-29_23-50-21.jpg',
     'photo_2026-04-29_23-50-38.jpg', 'photo_2026-04-29_23-50-39.jpg', 'photo_2026-04-29_23-50-40.jpg',
     'photo_2026-04-29_23-50-42.jpg', 'photo_2026-04-29_23-50-43.jpg', 'photo_2026-04-29_23-50-44.jpg',
     'photo_2026-04-29_23-50-45.jpg', 'photo_2026-04-29_23-50-46.jpg', 'photo_2026-04-29_23-50-48.jpg',
-    'photo_2026-04-29_23-50-49.jpg', 'photo_2026-04-29_23-50-50.jpg', 'photo_2026-04-29_23-50-51.jpg'
+    'photo_2026-04-29_23-50-49.jpg', 'photo_2026-04-29_23-50-50.jpg', 'photo_2026-04-29_23-50-51.jpg',
+    'photo_2026-04-29_23-50-54.jpg', 'photo_2026-04-29_23-50-59.jpg'
 ];
 
 async function login() {
     const c = document.getElementById('cid').value, p = document.getElementById('pin').value;
     try {
         const res = await db.listDocuments(DB_ID, USERS, [Query.equal('personalCode', c)]);
-        if(res.documents.length > 0) {
-            user = res.documents[0];
-            if(String(user.pin) !== p) return alert("PIN ERROR");
-        } else {
-            user = await db.createDocument(DB_ID, USERS, ID.unique(), { personalCode:c, pin:p, balance:1000, marketBalance:0 });
-        }
+        user = res.documents.length > 0 ? res.documents[0] : await db.createDocument(DB_ID, USERS, ID.unique(), { personalCode:c, pin:p, balance:1000, marketBalance:0 });
+        if(String(user.pin) !== p) return alert("Неверный PIN");
         document.getElementById('auth').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         updateUI(); tab('coins', document.querySelector('.n-btn'));
-    } catch(e) { alert("CONNECTION ERROR"); }
+    } catch(e) { alert("Ошибка сети"); }
 }
 
 function updateUI() {
     if(!user) return;
-    document.getElementById('bal-main').innerText = Math.floor(user.balance) + " ₽";
-    document.getElementById('bal-market').innerText = Math.floor(user.marketBalance || 0) + " ₽";
+    document.getElementById('bal-main').innerText = Math.floor(user.balance).toLocaleString() + " ₽";
+    document.getElementById('bal-market').innerText = Math.floor(user.marketBalance || 0).toLocaleString() + " ₽";
 }
 
 async function tab(t, btn) {
@@ -102,75 +101,90 @@ async function tab(t, btn) {
     }
     if(t === 'nft') {
         kiwiPhotos.forEach((img, i) => {
-            const pr = 1500 + (i * 200);
+            const pr = 1200 + (i * 150);
             s.innerHTML += `<div class="item"><div class="img-box"><img src="${img}"></div><div style="flex:1"><b>NFT КИВИ #${i+1}</b><br>${pr} ₽</div><button class="btn buy" onclick="buyAsset('NFT КИВИ #${i+1}', ${pr}, '${img}', this)">КУПИТЬ</button></div>`;
         });
     }
     if(t === 'work') {
-        s.innerHTML += `<div style="text-align:center; padding:30px;"><h1 id="clicks-display" style="color:var(--blue); font-size:3.5em;">${clicks}</h1><button id="mbtn" class="mine-btn" onclick="mine(this)">КЛИК</button></div>`;
+        s.innerHTML += `<div style="text-align:center; padding:30px;"><h1 id="clicks-val" style="color:var(--blue); font-size:3.5em;">${localClicks}</h1><button id="mbtn" class="mine-btn" onclick="mine(this)">КЛИК</button></div>`;
     }
     if(t === 'inv') {
+        s.innerHTML += "<p style='text-align:center; opacity:0.5;'>Загрузка склада...</p>";
         const res = await db.listDocuments(DB_ID, MARKET, [Query.equal('ownerId', user.$id)]);
+        s.innerHTML = `<h3 style="margin:15px; color:var(--green)">СКЛАД</h3>`;
         res.documents.forEach(doc => {
             s.innerHTML += `<div class="item" id="c-${doc.$id}"><div class="img-box"><img src="${doc.image}"></div><div style="flex:1"><b>${doc.name}</b></div><button class="btn sell" onclick="sellItem('${doc.$id}', ${doc.price}, this)">ПРОДАТЬ</button></div>`;
         });
     }
     if(t === 'me') {
-        s.innerHTML += `<div style="padding:20px; text-align:center;"><p>Баланс: ${user.marketBalance} ₽</p><button class="btn buy" style="width:100%; padding:15px;" onclick="withdraw(this)">ВЫВЕСТИ (МИН 500)</button></div>`;
+        s.innerHTML += `<div style="padding:20px; text-align:center;"><p>Доступно: ${user.marketBalance} ₽</p><button class="btn buy" style="width:100%; padding:15px;" onclick="withdraw(this)">ВЫВЕСТИ В БАНК</button></div>`;
     }
 }
 
 async function buyAsset(n, p, i, btn) {
-    if(user.balance < p) return alert("Мало денег");
+    if(isProcessing || user.balance < p) return;
+    isProcessing = true;
     btn.classList.add('loading');
     try {
         await db.createDocument(DB_ID, MARKET, ID.unique(), { name:n, price:p, ownerId:user.$id, image:i });
         user.balance -= p;
-        await db.updateDocument(DB_ID, USERS, user.$id, { balance: user.balance });
-        updateUI(); alert("Куплено!");
-    } catch(e) { alert("Ошибка!"); }
+        user = await db.updateDocument(DB_ID, USERS, user.$id, { balance: user.balance });
+        updateUI();
+    } catch(e) { alert("Ошибка покупки!"); }
     btn.classList.remove('loading');
+    isProcessing = false;
 }
 
 async function mine(btn) {
-    clicks++;
-    document.getElementById('clicks-display').innerText = clicks;
-    if(clicks >= 15) {
-        clicks = 0;
-        document.getElementById('clicks-display').innerText = 0;
+    if(isProcessing) return;
+    localClicks++;
+    document.getElementById('clicks-val').innerText = localClicks;
+    
+    if(localClicks >= 15) {
+        isProcessing = true;
         btn.classList.add('loading');
         try {
+            // Начисляем деньги и сохраняем майнера ОДНИМ блоком
             user.marketBalance += 50;
-            await db.createDocument(DB_ID, MARKET, ID.unique(), { name: "Киви Майнер", price: 20, ownerId: user.$id, image: 'photo_2026-04-29_23-50-20.jpg' });
-            await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance });
-            updateUI(); alert("+50 ₽ и Майнер!");
-        } catch(e) { alert("Ошибка сохранения работы!"); }
+            await db.createDocument(DB_ID, MARKET, ID.unique(), { name: "Майнинг Киви", price: 20, ownerId: user.$id, image: 'photo_2026-04-29_23-50-20.jpg' });
+            user = await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance });
+            localClicks = 0;
+            document.getElementById('clicks-val').innerText = 0;
+            updateUI();
+        } catch(e) { alert("Ошибка базы!"); }
         btn.classList.remove('loading');
+        isProcessing = false;
     }
 }
 
 async function sellItem(id, price, btn) {
+    if(isProcessing) return;
+    isProcessing = true;
     btn.classList.add('loading');
     try {
         await db.deleteDocument(DB_ID, MARKET, id);
         user.marketBalance += Math.floor(price * 0.1);
-        await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance });
-        document.getElementById(`c-${id}`).remove();
+        user = await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance });
+        document.getElementById(`c-${id}`).style.display = 'none';
         updateUI();
-    } catch(e) { alert("Ошибка!"); btn.classList.remove('loading'); }
+    } catch(e) { alert("Ошибка продажи!"); }
+    btn.classList.remove('loading');
+    isProcessing = false;
 }
 
 async function withdraw(btn) {
-    if(user.marketBalance < 500) return alert("Нужно 500 ₽");
+    if(user.marketBalance < 500 || isProcessing) return alert("Минимум 500 ₽");
+    isProcessing = true;
     btn.classList.add('loading');
     const payout = Math.floor(user.marketBalance * 0.1);
     try {
         user.balance += payout;
         user.marketBalance = 0;
-        await db.updateDocument(DB_ID, USERS, user.$id, { balance: user.balance, marketBalance: 0 });
-        updateUI(); alert("Выведено!");
-    } catch(e) { alert("Ошибка!"); }
+        user = await db.updateDocument(DB_ID, USERS, user.$id, { balance: user.balance, marketBalance: 0 });
+        updateUI(); alert("Успешно!");
+    } catch(e) { alert("Ошибка вывода!"); }
     btn.classList.remove('loading');
+    isProcessing = false;
 }
 </script>
 </body>
