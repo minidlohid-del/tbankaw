@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIWI ELITE | STABLE BUILD</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        :root { --green: #00ff00; --bg: #000; --card: #111; --red: #ff3333; --blue: #00ccff; }
+        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding-bottom: 90px; }
+        
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes sellOut { to { opacity: 0; transform: translateX(100px); } }
+
+        .header { padding: 15px; background: #0a0a0a; border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 100; }
+        .row { display: flex; justify-content: space-between; align-items: center; }
+        
+        .item { display: flex; align-items: center; background: var(--card); margin: 10px; padding: 12px; border-radius: 12px; border: 1px solid #222; animation: fadeUp 0.3s ease; }
+        .img-box { width: 50px; height: 50px; border-radius: 8px; margin-right: 12px; overflow: hidden; border: 1px solid var(--green); flex-shrink: 0; }
+        .img-box img { width: 100%; height: 100%; object-fit: cover; }
+
+        .nav { position: fixed; bottom: 0; width: 100%; background: #0a0a0a; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; }
+        .n-btn { background: none; border: none; color: #555; font-size: 0.7em; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .n-btn.active { color: var(--green); }
+
+        .btn { padding: 8px 15px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; }
+        .buy { background: var(--green); color: black; }
+        .sell { background: var(--red); color: white; }
+
+        .mine-btn { width: 160px; height: 160px; border-radius: 50%; border: 4px solid var(--green); background: none; color: var(--green); font-size: 1.5em; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.1s; }
+        .mine-btn:active { transform: scale(0.9); box-shadow: 0 0 15px var(--green); }
+    </style>
+</head>
+<body>
+
+    <div id="auth" style="position:fixed; inset:0; background:#000; z-index:2000; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <h2 style="color:var(--green)">KIWI ELITE</h2>
+        <input type="text" id="cid" placeholder="КАРТА" style="padding:12px; margin:5px; width:250px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <input type="password" id="pin" placeholder="PIN" style="padding:12px; margin:5px; width:250px; background:#111; border:1px solid #333; color:white; border-radius:8px; text-align:center;">
+        <button class="btn buy" style="width:275px; margin-top:10px" onclick="login()">ВОЙТИ</button>
+    </div>
+
+    <div id="app" style="display:none;">
+        <div class="header">
+            <div class="row">
+                <div style="font-size:0.8em;">БАНК: <span id="bal-main" style="color:var(--green);">0 ₽</span></div>
+                <div style="font-size:0.8em;">МАРКЕТ: <span id="bal-market" style="color:var(--blue);">0 ₽</span></div>
+            </div>
+        </div>
+        <div id="screen"></div>
+        <nav class="nav">
+            <button class="n-btn active" onclick="tab('coins', this)">БИРЖА</button>
+            <button class="n-btn" onclick="tab('nft', this)">NFT</button>
+            <button class="n-btn" onclick="tab('work', this)">РАБОТАТЬ</button>
+            <button class="n-btn" onclick="tab('inv', this)">СКЛАД</button>
+            <button class="n-btn" onclick="tab('me', this)">ПРОФИЛЬ</button>
+        </nav>
+    </div>
+
+<script>
+const { Client, Databases, Query, ID } = Appwrite;
+const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
+const db = new Databases(client);
+const DB_ID = 'bank_db', USERS = 'users', MARKET = 'market';
+
+let user = null;
+let lastClick = 0;
+const kiwiPhotos = ['photo_2026-04-29_23-50-11.jpg', 'photo_2026-04-29_23-50-20.jpg', 'photo_2026-04-29_23-50-40.jpg', 'photo_2026-04-29_23-50-54.jpg', 'photo_2026-04-29_23-50-59.jpg'];
+
+async function login() {
+    const c = document.getElementById('cid').value, p = document.getElementById('pin').value;
+    try {
+        const res = await db.listDocuments(DB_ID, USERS, [Query.equal('personalCode', c)]);
+        user = res.documents.length > 0 ? res.documents[0] : await db.createDocument(DB_ID, USERS, ID.unique(), { personalCode:c, pin:p, balance:1000, marketBalance:0 });
+        if(String(user.pin) !== p) return alert("Error");
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        updateUI(); tab('coins', document.querySelector('.n-btn'));
+    } catch(e) { alert("Auth Error"); }
+}
+
+function updateUI() {
+    if(!user) return;
+    document.getElementById('bal-main').innerText = Math.floor(user.balance) + " ₽";
+    document.getElementById('bal-market').innerText = Math.floor(user.marketBalance || 0) + " ₽";
+}
+
+async function tab(t, btn) {
+    const s = document.getElementById('screen');
+    s.innerHTML = `<h3 style="margin:15px; color:var(--green)">${t.toUpperCase()}</h3>`;
+    if(btn) { document.querySelectorAll('.n-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+
+    if(t === 'coins') {
+        ["КивиГаз", "КивиКристалл"].forEach(n => {
+            const pr = Math.floor(Math.random()*5000)+500;
+            s.innerHTML += `<div class="item"><div class="img-box"><img src="photo_2026-04-29_23-50-11.jpg"></div><div style="flex:1"><b>${n}</b><br>${pr} ₽</div><button class="btn buy" onclick="buyAsset('${n}', ${pr}, 'photo_2026-04-29_23-50-11.jpg')">КУПИТЬ</button></div>`;
+        });
+    }
+    if(t === 'nft') {
+        kiwiPhotos.forEach((img, i) => {
+            const pr = Math.floor(Math.random()*50000)+1000;
+            s.innerHTML += `<div class="item"><div class="img-box"><img src="${img}"></div><div style="flex:1"><b>NFT Киви #${i}</b><br>${pr} ₽</div><button class="btn buy" onclick="buyAsset('NFT Киви', ${pr}, '${img}')">КУПИТЬ</button></div>`;
+        });
+    }
+    if(t === 'work') {
+        s.innerHTML += `<div style="text-align:center; padding:30px;"><h1 id="clicks" style="color:var(--blue); font-size:3em;">0</h1><button class="mine-btn" onclick="mine()">КЛИК</button></div>`;
+    }
+    if(t === 'inv') {
+        const res = await db.listDocuments(DB_ID, MARKET, [Query.equal('ownerId', user.$id)]);
+        res.documents.forEach(doc => {
+            s.innerHTML += `<div class="item" id="card-${doc.$id}"><div class="img-box"><img src="${doc.image}"></div><div style="flex:1"><b>${doc.name}</b></div><button class="btn sell" onclick="sellItem('${doc.$id}', ${doc.price})">ПРОДАТЬ</button></div>`;
+        });
+    }
+    if(t === 'me') {
+        s.innerHTML += `<div style="padding:20px; text-align:center;"><button class="btn buy" style="width:100%; padding:15px;" onclick="withdraw()">ВЫВЕСТИ В БАНК</button></div>`;
+    }
+}
+
+async function buyAsset(n, p, i) {
+    if(user.balance < p) return alert("Мало денег");
+    user.balance -= p; updateUI();
+    try {
+        await db.createDocument(DB_ID, MARKET, ID.unique(), { name:n, price:p, ownerId:user.$id, image:i });
+        await db.updateDocument(DB_ID, USERS, user.$id, { balance: user.balance });
+    } catch(e) { alert("Ошибка покупки"); }
+}
+
+async function sellItem(id, price) {
+    const card = document.getElementById(`card-${id}`);
+    card.style.animation = "sellOut 0.3s forwards";
+    const earn = Math.floor(price * 0.1);
+    user.marketBalance += earn;
+    updateUI();
+    try {
+        await db.deleteDocument(DB_ID, MARKET, id);
+        await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance });
+        setTimeout(() => card.remove(), 300);
+    } catch(e) { card.style.animation = ""; }
+}
+
+async function mine() {
+    const now = Date.now();
+    if(now - lastClick < 60) return;
+    lastClick = now;
+    let c = parseInt(document.getElementById('clicks').innerText) + 1;
+    document.getElementById('clicks').innerText = c;
+    if(c % 15 === 0) {
+        user.marketBalance += 50;
+        updateUI();
+        await db.createDocument(DB_ID, MARKET, ID.unique(), { name: "Киви Майнер", price: 20, ownerId: user.$id, image: 'photo_2026-04-29_23-50-20.jpg' });
+        await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: user.marketBalance });
+    }
+}
+
+async function withdraw() {
+    const mb = user.marketBalance || 0;
+    if(mb < 500) return alert("Мин. 500 ₽");
+    const payout = Math.floor(mb * 0.1);
+    if(confirm(`Вывод: ${mb} ₽. Получите: ${payout} ₽. Ок?`)) {
+        user.balance += payout; user.marketBalance = 0;
+        updateUI();
+        await db.updateDocument(DB_ID, USERS, user.$id, { balance: user.balance, marketBalance: 0 });
+    }
+}
+</script>
+</body>
+</html>
