@@ -29,8 +29,8 @@
     <div id="auth-section" class="flex-1 flex items-center justify-center p-6">
         <div class="w-full max-w-xs p-8 glass-panel rounded-[32px] text-center">
             <h2 class="text-orange-500 font-black italic text-xl mb-8 tracking-tighter">KIWI MARKET V3</h2>
-            <input id="auth-code" type="text" placeholder="Код входа" class="w-full p-4 rounded-2xl bg-black border border-zinc-800 mb-3 text-center font-bold text-white">
-            <input id="auth-pin" type="password" placeholder="Пин-код" class="w-full p-4 rounded-2xl bg-black border border-zinc-800 mb-8 text-center font-bold text-white">
+            <input id="auth-code" type="text" placeholder="Код входа" class="w-full p-4 rounded-2xl bg-black border border-zinc-800 mb-3 text-center font-bold text-white outline-none">
+            <input id="auth-pin" type="password" placeholder="Пин-код" class="w-full p-4 rounded-2xl bg-black border border-zinc-800 mb-8 text-center font-bold text-white outline-none">
             <button onclick="linkBank()" class="w-full bg-gradient-to-r from-orange-500 to-yellow-500 py-4 rounded-2xl font-black uppercase text-[11px] text-black tracking-widest">Войти</button>
         </div>
     </div>
@@ -119,13 +119,10 @@ function switchTab(tab) {
     document.getElementById('nav-profile').classList.toggle('active', tab === 'profile');
 }
 
-// Новый фарминг: 1 клик = 100 рублей
 async function handleFarmClick() {
     if(navigator.vibrate) navigator.vibrate(15);
-    
     currentUser.market_wallet = (currentUser.market_wallet || 0) + 100;
     updateUI();
-    
     document.getElementById('sync-status').style.opacity = "1";
     clearTimeout(syncTimeout);
     syncTimeout = setTimeout(async () => {
@@ -136,17 +133,38 @@ async function handleFarmClick() {
     }, 1000);
 }
 
+// === ИЗМЕНЕННАЯ ФУНКЦИЯ ВЫВОДА ===
 async function withdraw() {
     if (currentUser.market_wallet < 500) return alert("Минимум 500 ₽");
     const receive = Math.floor(currentUser.market_wallet * 0.1);
+    
     if (!confirm(`Вывести ${currentUser.market_wallet} ₽?\nПолучите: ${receive} ₽`)) return;
+    
     try {
+        const names = ["Иван", "Алексей", "Иброгим", "Михаил", "Рынок (P2P)", "DarkSeller"];
+        const randomFrom = names[Math.floor(Math.random() * names.length)];
+        const dateStr = new Date().toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+
+        let history = [];
+        try { if (currentUser.history && currentUser.history.startsWith('[')) history = JSON.parse(currentUser.history); } catch(e) {}
+        
+        // Добавляем запись от рандомного человека
+        history.push({ type: 'received', from: randomFrom, amount: receive, date: dateStr });
+        if (history.length > 15) history.shift();
+
         const newBank = (currentUser.balance || 0) + receive;
-        await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, { balance: newBank, market_wallet: 0 });
+        
+        await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, { 
+            balance: newBank, 
+            market_wallet: 0,
+            history: JSON.stringify(history)
+        });
+
         currentUser.balance = newBank;
         currentUser.market_wallet = 0;
+        currentUser.history = JSON.stringify(history);
         updateUI();
-        alert("Переведено!");
+        alert(`Переведено! Отправитель: ${randomFrom}`);
     } catch (e) { alert("Ошибка: " + e.message); }
 }
 </script>
