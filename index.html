@@ -90,6 +90,14 @@
         <div id="screen-more" class="screen-container p-6 hidden">
             <h2 class="text-2xl font-black italic mb-6 text-orange-500 uppercase text-center">Профиль</h2>
             <div class="space-y-4">
+                <!-- БЛОК СМЕНЫ НОМЕРА -->
+                <div class="bg-zinc-900/80 p-4 rounded-2xl border border-orange-500/20">
+                    <p class="text-[10px] text-orange-500 uppercase font-black mb-2 italic">Смена номера (SMS-Service)</p>
+                    <input id="new-phone" type="text" placeholder="Новый номер (+7...)" class="w-full p-3 rounded-lg text-sm bg-black mb-2">
+                    <input id="new-phone-code" type="text" placeholder="Код подтверждения (6 цифр)" class="w-full p-3 rounded-lg text-sm bg-black mb-3">
+                    <button onclick="changePhoneNumber()" class="w-full py-2 bg-orange-500 text-white rounded-lg font-bold uppercase text-[9px]">Подтвердить смену</button>
+                </div>
+
                 <div class="bg-zinc-900/80 p-4 rounded-2xl border border-white/5">
                     <p class="text-[10px] text-zinc-500 uppercase mb-2">Отображаемое имя</p>
                     <input id="edit-name" type="text" class="w-full p-3 rounded-lg text-sm bg-black">
@@ -130,6 +138,7 @@
 <script>
 const DB_ID = 'bank_db'; 
 const COLL_ID = 'users'; 
+const COLL_PURCHASED = 'purchased_numbers'; // Наша новая таблица
 const { Client, Databases, ID, Query } = Appwrite;
 
 const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
@@ -196,6 +205,35 @@ function renderInterface() {
     updateHistoryUI();
 }
 
+// ФУНКЦИЯ ПРОВЕРКИ И СМЕНЫ НОМЕРА
+async function changePhoneNumber() {
+    const newNum = document.getElementById('new-phone').value.trim();
+    const smsCode = document.getElementById('new-phone-code').value.trim();
+
+    if (!newNum || smsCode.length < 6) return alert("Введите номер и 6-значный код");
+
+    try {
+        // Проверяем, есть ли такой купленный номер с таким кодом в таблице purchased_numbers
+        const check = await databases.listDocuments(DB_ID, COLL_PURCHASED, [
+            Query.equal('number', newNum),
+            Query.equal('code', smsCode)
+        ]);
+
+        if (check.documents.length > 0) {
+            // Если номер и код совпали — обновляем профиль пользователя
+            await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, {
+                phone: newNum
+            });
+            alert("Номер успешно изменен!");
+            location.reload();
+        } else {
+            alert("Неверный номер или код подтверждения!");
+        }
+    } catch (e) {
+        alert("Ошибка при проверке данных");
+    }
+}
+
 function updateHistoryUI() {
     const list = document.getElementById('history-list');
     let history = [];
@@ -247,19 +285,16 @@ async function sendMoney() {
 
         const dateStr = new Date().toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
 
-        // 1. ИСТОРИЯ ОТПРАВИТЕЛЯ (МЫ)
         let myHistory = [];
         try { if (currentUser.history.startsWith('[')) myHistory = JSON.parse(currentUser.history); } catch(e) {}
         myHistory.push({ type: 'sent', to: receiver.name, amount: amount, date: dateStr });
         if (myHistory.length > 15) myHistory.shift();
 
-        // 2. ИСТОРИЯ ПОЛУЧАТЕЛЯ
         let hisHistory = [];
         try { if (receiver.history.startsWith('[')) hisHistory = JSON.parse(receiver.history); } catch(e) {}
         hisHistory.push({ type: 'received', from: currentUser.name, amount: amount, date: dateStr });
         if (hisHistory.length > 15) hisHistory.shift();
 
-        // ОБНОВЛЕНИЕ БАЗЫ
         await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, { 
             balance: currentUser.balance - amount,
             history: JSON.stringify(myHistory)
