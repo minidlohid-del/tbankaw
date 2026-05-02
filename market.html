@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KiwiMarket V3</title>
+    <title>KiwiMarket V3 — Ultra</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { background-color: #0b0b0b; color: white; font-family: 'Inter', sans-serif; overflow: hidden; user-select: none; touch-action: manipulation; }
-        
-        /* Золотая монета */
         .kiwi-coin { 
             width: 240px; height: 240px; 
             background: linear-gradient(135deg, #ffb347 0%, #ff8c00 100%);
@@ -20,243 +18,136 @@
             cursor: pointer; transition: transform 0.05s, filter 0.1s;
         }
         .kiwi-coin:active { transform: scale(0.92); filter: brightness(1.2); }
-        
-        /* Стеклянные панели */
         .glass-panel { background: rgba(20, 20, 20, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
-        
-        /* Кнопки меню */
         .nav-btn { flex: 1; padding: 16px 0; text-align: center; color: #555; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s;}
         .nav-btn.active { color: #ff8c00; border-bottom: 3px solid #ff8c00; background: linear-gradient(to top, rgba(255,140,0,0.1), transparent); }
-        
         .hidden { display: none !important; }
-        
-        /* Индикатор прогресса кликов */
-        .progress-bar { height: 6px; background: #222; border-radius: 10px; overflow: hidden; margin-top: 20px; width: 200px; }
-        .progress-fill { height: 100%; background: #ff8c00; width: 0%; transition: width 0.1s; }
     </style>
 </head>
 <body class="flex flex-col h-screen">
 
-    <!-- ЭКРАН ВХОДА -->
     <div id="auth-section" class="flex-1 flex items-center justify-center p-6">
         <div class="w-full max-w-xs p-8 glass-panel rounded-[32px] text-center">
             <h2 class="text-orange-500 font-black italic text-xl mb-8 tracking-tighter">KIWI MARKET V3</h2>
-            <input id="auth-code" type="text" placeholder="Код входа" class="w-full p-4 rounded-2xl bg-black border border-zinc-800 mb-3 text-center font-bold text-white outline-none focus:border-orange-500">
-            <input id="auth-pin" type="password" placeholder="Пин-код" class="w-full p-4 rounded-2xl bg-black border border-zinc-800 mb-8 text-center font-bold text-white outline-none focus:border-orange-500">
-            <button onclick="linkBank()" class="w-full bg-gradient-to-r from-orange-500 to-yellow-500 py-4 rounded-2xl font-black uppercase text-[11px] text-black tracking-widest hover:scale-105 transition">Войти</button>
+            <input id="auth-code" type="text" placeholder="Код входа" class="w-full p-4 rounded-2xl bg-black border border-zinc-800 mb-3 text-center font-bold text-white">
+            <input id="auth-pin" type="password" placeholder="Пин-код" class="w-full p-4 rounded-2xl bg-black border border-zinc-800 mb-8 text-center font-bold text-white">
+            <button onclick="linkBank()" class="w-full bg-gradient-to-r from-orange-500 to-yellow-500 py-4 rounded-2xl font-black uppercase text-[11px] text-black tracking-widest">Войти</button>
         </div>
     </div>
 
-    <!-- ОСНОВНОЙ ИНТЕРФЕЙС -->
     <div id="app-section" class="hidden flex-1 flex flex-col">
-        
-        <!-- ХЕДЕР БАЛАНСОВ -->
         <header class="p-6 flex justify-between items-start border-b border-white/5">
-            <!-- Лево: БАНК -->
             <div class="text-left">
-                <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Баланс Банка</p>
+                <p class="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Банк</p>
                 <h2 id="bank-disp" class="text-xl font-black italic text-white">0 ₽</h2>
             </div>
-            <!-- Право: МАРКЕТ -->
             <div class="text-right">
-                <p class="text-[9px] text-orange-500 font-black uppercase tracking-widest mb-1">Баланс Маркета</p>
+                <p class="text-[9px] text-orange-500 font-black uppercase tracking-widest mb-1">Маркет</p>
                 <h2 id="market-disp" class="text-xl font-black italic text-orange-500">0 ₽</h2>
             </div>
         </header>
 
-        <!-- КОНТЕНТ ВЛАДОК -->
         <main class="flex-1 relative overflow-hidden">
-            
-            <!-- ВЛАДКА 1: РАБОТА -->
             <div id="tab-work" class="absolute inset-0 flex flex-col items-center justify-center p-6 transition-opacity duration-300">
-                <div class="kiwi-coin" id="coin-btn" onclick="handleFarmClick()">
+                <div class="kiwi-coin" onclick="handleFarmClick()">
                     <span class="text-8xl font-black italic text-black/20">K</span>
                 </div>
-                
-                <div class="mt-12 text-center flex flex-col items-center">
-                    <p class="text-zinc-400 text-[10px] font-bold uppercase tracking-widest">Прогресс до 50 ₽</p>
-                    <div class="progress-bar">
-                        <div id="click-progress" class="progress-fill"></div>
-                    </div>
-                    <p id="click-counter" class="mt-2 text-orange-500 text-xs font-black">0 / 15</p>
+                <div class="mt-12 text-center">
+                    <p class="text-orange-500 text-xs font-black uppercase tracking-widest">+100 ₽ ЗА КЛИК</p>
                     <p id="sync-status" class="mt-4 text-[8px] font-bold text-zinc-600 uppercase tracking-widest opacity-0">Сохранение...</p>
                 </div>
             </div>
 
-            <!-- ВЛАДКА 2: ПРОФИЛЬ -->
             <div id="tab-profile" class="absolute inset-0 flex flex-col items-center justify-center p-6 opacity-0 pointer-events-none transition-opacity duration-300">
                 <div class="w-full max-w-sm glass-panel p-8 rounded-[32px] text-center">
-                    <div class="w-20 h-20 mx-auto bg-zinc-800 rounded-full flex items-center justify-center mb-4 border border-zinc-700">
-                        <span class="text-2xl">💼</span>
-                    </div>
-                    <h3 class="text-lg font-black uppercase mb-1">Ваш Профиль</h3>
-                    <p class="text-xs text-zinc-500 font-bold mb-8">Вывод средств на счет в банке</p>
-                    
-                    <div class="bg-black/50 p-4 rounded-2xl border border-white/5 mb-6 text-left">
-                        <p class="text-[10px] text-zinc-500 uppercase font-black mb-1">Доступно к выводу:</p>
+                    <h3 class="text-lg font-black uppercase mb-1">Профиль</h3>
+                    <div class="bg-black/50 p-4 rounded-2xl border border-white/5 my-6 text-left">
+                        <p class="text-[10px] text-zinc-500 uppercase font-black mb-1">Нафармлено:</p>
                         <p id="profile-market-balance" class="text-2xl font-black italic text-orange-500 mb-4">0 ₽</p>
-                        
                         <div class="flex justify-between items-center text-[9px] font-bold text-zinc-400 border-t border-white/10 pt-3">
-                            <span>Минималка: <b class="text-white">500 ₽</b></span>
-                            <span>Комиссия: <b class="text-red-400">90%</b></span>
+                            <span>Минимум: 500 ₽</span>
+                            <span>Комиссия: 90%</span>
                         </div>
                     </div>
-
-                    <button onclick="withdraw()" class="w-full bg-orange-500 py-4 rounded-xl font-black uppercase text-xs text-black tracking-widest hover:bg-orange-400 transition">Вывести средства</button>
-                    
-                    <button onclick="location.href='index.html'" class="mt-6 text-[10px] text-zinc-600 font-black uppercase tracking-widest border-b border-zinc-800 pb-1">Вернуться в банк</button>
+                    <button onclick="withdraw()" class="w-full bg-orange-500 py-4 rounded-xl font-black uppercase text-xs text-black">Вывести</button>
                 </div>
             </div>
-
         </main>
 
-        <!-- НИЖНЯЯ НАВИГАЦИЯ -->
         <nav class="glass-panel flex">
             <button onclick="switchTab('work')" id="nav-work" class="nav-btn active">Работа</button>
             <button onclick="switchTab('profile')" id="nav-profile" class="nav-btn">Профиль</button>
         </nav>
-
     </div>
 
 <script>
-// === НАСТРОЙКИ APPWRITE ===
 const DB_ID = 'bank_db'; 
 const COLL_ID = 'users'; 
 const { Client, Databases, Query } = Appwrite;
-
 const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
 const databases = new Databases(client);
 
-// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
 let currentUser = null;
-let currentClicks = 0;
+let syncTimeout = null;
 
-// === 1. ВХОД И ИНИЦИАЛИЗАЦИЯ ===
 async function linkBank() {
     const code = document.getElementById('auth-code').value;
     const pin = document.getElementById('auth-pin').value;
-    
-    if(!code || !pin) return alert("Введите данные");
-
     try {
-        const res = await databases.listDocuments(DB_ID, COLL_ID, [
-            Query.equal('personalCode', code), Query.equal('pin', pin)
-        ]);
+        const res = await databases.listDocuments(DB_ID, COLL_ID, [Query.equal('personalCode', code), Query.equal('pin', pin)]);
         if (res.documents.length > 0) {
             currentUser = res.documents[0];
-            // Защита от undefined: если поля market_wallet нет, считаем за 0
-            if(currentUser.market_wallet === undefined) currentUser.market_wallet = 0;
-            
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('app-section').classList.remove('hidden');
             updateUI();
-        } else {
-            alert("Неверный код или пин-код");
-        }
-    } catch (e) { 
-        alert("Ошибка подключения к серверу"); 
-        console.error(e);
-    }
+        } else alert("Ошибка данных");
+    } catch (e) { alert("Ошибка сети"); }
 }
 
-// === 2. ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ===
 function updateUI() {
-    // Обновляем текст балансов
     document.getElementById('bank-disp').innerText = (currentUser.balance || 0).toLocaleString() + " ₽";
-    document.getElementById('market-disp').innerText = currentUser.market_wallet.toLocaleString() + " ₽";
-    document.getElementById('profile-market-balance').innerText = currentUser.market_wallet.toLocaleString() + " ₽";
-    
-    // Обновляем шкалу прогресса
-    document.getElementById('click-counter').innerText = `${currentClicks} / 15`;
-    const percent = (currentClicks / 15) * 100;
-    document.getElementById('click-progress').style.width = `${percent}%`;
+    document.getElementById('market-disp').innerText = (currentUser.market_wallet || 0).toLocaleString() + " ₽";
+    document.getElementById('profile-market-balance').innerText = (currentUser.market_wallet || 0).toLocaleString() + " ₽";
 }
 
-// === 3. НАВИГАЦИЯ ПО ВКЛАДКАМ ===
 function switchTab(tab) {
-    const wTab = document.getElementById('tab-work');
-    const pTab = document.getElementById('tab-profile');
-    const wNav = document.getElementById('nav-work');
-    const pNav = document.getElementById('nav-profile');
-
-    if(tab === 'work') {
-        wTab.classList.remove('opacity-0', 'pointer-events-none');
-        pTab.classList.add('opacity-0', 'pointer-events-none');
-        wNav.classList.add('active');
-        pNav.classList.remove('active');
-    } else {
-        pTab.classList.remove('opacity-0', 'pointer-events-none');
-        wTab.classList.add('opacity-0', 'pointer-events-none');
-        pNav.classList.add('active');
-        wNav.classList.remove('active');
-    }
+    document.getElementById('tab-work').classList.toggle('opacity-0', tab !== 'work');
+    document.getElementById('tab-work').classList.toggle('pointer-events-none', tab !== 'work');
+    document.getElementById('tab-profile').classList.toggle('opacity-0', tab !== 'profile');
+    document.getElementById('tab-profile').classList.toggle('pointer-events-none', tab !== 'profile');
+    document.getElementById('nav-work').classList.toggle('active', tab === 'work');
+    document.getElementById('nav-profile').classList.toggle('active', tab === 'profile');
 }
 
-// === 4. ЛОГИКА ФАРМИНГА (15 кликов = 50 руб) ===
+// Новый фарминг: 1 клик = 100 рублей
 async function handleFarmClick() {
-    currentClicks++;
+    if(navigator.vibrate) navigator.vibrate(15);
     
-    // Вибрация на телефонах при клике (если поддерживается)
-    if(navigator.vibrate) navigator.vibrate(10); 
+    currentUser.market_wallet = (currentUser.market_wallet || 0) + 100;
+    updateUI();
     
-    if(currentClicks >= 15) {
-        currentClicks = 0;
-        currentUser.market_wallet += 50; // Добавляем полтинник
-        
-        updateUI(); // Сразу показываем деньги
-        
-        // Отправляем сохранение в базу (только раз в 15 кликов!)
-        document.getElementById('sync-status').style.opacity = "1";
+    document.getElementById('sync-status').style.opacity = "1";
+    clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(async () => {
         try {
-            await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, {
-                market_wallet: currentUser.market_wallet
-            });
-        } catch (e) {
-            console.error("Ошибка сохранения:", e);
-            alert("Appwrite Ошибка: " + e.message);
-        } finally {
+            await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, { market_wallet: currentUser.market_wallet });
             document.getElementById('sync-status').style.opacity = "0";
-        }
-    } else {
-        updateUI(); // Просто обновляем шкалу
-    }
+        } catch (e) { console.error(e); }
+    }, 1000);
 }
 
-// === 5. ЛОГИКА ВЫВОДА ===
 async function withdraw() {
-    if (currentUser.market_wallet < 500) {
-        return alert("Минимальная сумма для вывода — 500 ₽");
-    }
-
-    // Считаем комиссию
-    const amountToWithdraw = currentUser.market_wallet;
-    const commission = amountToWithdraw * 0.9; // 90%
-    const amountToReceive = Math.floor(amountToWithdraw * 0.1); // Пользователь получает 10%
-
-    const confirmText = `ПОДТВЕРЖДЕНИЕ ВЫВОДА\n\nВыводим: ${amountToWithdraw} ₽\nКомиссия (90%): -${commission} ₽\n\nВы получите на счет: ${amountToReceive} ₽\n\nПродолжить?`;
-    
-    if (!confirm(confirmText)) return;
-
+    if (currentUser.market_wallet < 500) return alert("Минимум 500 ₽");
+    const receive = Math.floor(currentUser.market_wallet * 0.1);
+    if (!confirm(`Вывести ${currentUser.market_wallet} ₽?\nПолучите: ${receive} ₽`)) return;
     try {
-        const newBankBalance = (currentUser.balance || 0) + amountToReceive;
-        
-        // Обновляем базу: плюсуем банк, обнуляем маркет
-        await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, {
-            balance: newBankBalance,
-            market_wallet: 0 
-        });
-
-        // Успех! Обновляем локальные данные и UI
-        currentUser.balance = newBankBalance;
+        const newBank = (currentUser.balance || 0) + receive;
+        await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, { balance: newBank, market_wallet: 0 });
+        currentUser.balance = newBank;
         currentUser.market_wallet = 0;
-        currentClicks = 0; // Сбрасываем клики при выводе
         updateUI();
-        
-        alert("Успешно! Средства переведены в банк.");
-    } catch (e) {
-        console.error(e);
-        alert("Appwrite Ошибка при выводе: " + e.message);
-    }
+        alert("Переведено!");
+    } catch (e) { alert("Ошибка: " + e.message); }
 }
 </script>
 </body>
