@@ -3,186 +3,233 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOLD V3 | MARKET</title>
+    <title>KiwiSMS — Магазин номеров</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --gold: #ffd700; --bg: #050505; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; user-select: none; overflow: hidden; }
-        
-        /* ИСПРАВЛЕНО: Добавлены отступы по бокам, чтобы плашки не прилипали к краям */
-        .header { 
-            position: fixed; 
-            top: 0; 
-            width: 100%; 
-            padding: 15px 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            z-index: 1000; 
-            box-sizing: border-box; /* Чтобы padding не раздувал ширину */
-        }
-        
-        .stat { background: #111; border: 1px solid var(--gold); padding: 8px 15px; border-radius: 12px; font-size: 0.9em; box-shadow: 0 0 10px rgba(255,215,0,0.1); }
-        .stat b { color: var(--gold); display: block; font-size: 0.7em; }
-        
-        .nav { position: fixed; bottom: 0; width: 100%; background: #0a0a0a; display: flex; border-top: 1px solid #222; }
-        .n-btn { flex: 1; padding: 20px; background: none; border: none; color: #444; font-weight: bold; cursor: pointer; }
-        .n-btn.active { color: var(--gold); }
-
-        #screen { height: 100vh; padding-top: 100px; display: flex; flex-direction: column; align-items: center; }
-        
-        .mine-btn { 
-            width: 220px; height: 220px; border-radius: 50%; border: 6px solid var(--gold); 
-            background: radial-gradient(circle, #222, #000); color: var(--gold); font-size: 3em; font-weight: bold;
-            cursor: pointer; transition: 0.1s; box-shadow: 0 0 20px rgba(255,215,0,0.2);
-        }
-        .mine-btn:active { transform: scale(0.9); }
-
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 5000; }
-        .modal { background: #111; border: 1px solid var(--gold); padding: 25px; border-radius: 20px; width: 90%; max-width: 320px; text-align: center; }
-        .btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-gold { background: var(--gold); color: black; }
-
-        #auth { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .inpt { background: #111; border: 1px solid #222; color: white; padding: 15px; width: 280px; margin: 5px; border-radius: 10px; text-align: center; }
+        body { background-color: #0b0b0b; color: white; font-family: 'Inter', sans-serif; }
+        .kiwi-btn { background: #ff8c00; transition: 0.2s; }
+        .kiwi-btn:hover { background: #e67e00; }
+        .card { background: #141414; border: 1px solid #222; }
+        .modal { background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); }
+        .hidden { display: none !important; }
+        input { background: #1a1a1a !important; border: 1px solid #333 !important; color: white; }
+        .sync-loader { color: #ff8c00; font-size: 10px; font-weight: bold; text-transform: uppercase; }
     </style>
 </head>
-<body>
+<body class="p-4 pb-20">
 
-<div id="auth">
-    <h1 style="color:var(--gold); letter-spacing:8px;">GOLD V3</h1>
-    <input type="text" id="cid" class="inpt" placeholder="ID КАРТЫ">
-    <input type="password" id="pin" class="inpt" placeholder="PIN">
-    <button class="btn btn-gold" style="width:280px;" onclick="login()">ВХОД</button>
-</div>
-
-<div class="modal-overlay" id="modal">
-    <div class="modal">
-        <h3 style="color:var(--gold);">ВЫВОД СРЕДСТВ</h3>
-        <div style="background:#000; padding:15px; border-radius:12px; text-align: left;">
-            <div style="display:flex;justify-content:space-between"><span>Сумма:</span> <span id="m-sum">0 ₽</span></div>
-            <div style="display:flex;justify-content:space-between;color:red;"><span>Комиссия:</span> <span>90%</span></div>
-            <div style="display:flex;justify-content:space-between;border-top:1px solid #222;margin-top:10px;padding-top:10px;"><span>К зачислению:</span> <span id="m-net" style="color:var(--gold);">0 ₽</span></div>
+<div class="max-w-md mx-auto">
+    <header class="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
+        <h1 class="text-2xl font-black italic text-orange-500">KIWISMS</h1>
+        <div class="flex flex-col items-end">
+            <div id="balance-tag" class="bg-orange-500/10 border border-orange-500/30 px-4 py-1 rounded-full text-sm font-bold hidden">
+                <span id="user-balance" class="text-orange-500">0</span> <span class="text-orange-500">₽</span>
+            </div>
+            <div id="sync-status" class="sync-loader mt-1 hidden text-[8px]">Синхронизация...</div>
         </div>
-        <button class="btn btn-gold" id="confirm-btn" onclick="confirmWithdraw()">ПОДТВЕРДИТЬ</button>
-        <button class="btn" style="background:#222;color:gray;" onclick="closeModal()">ОТМЕНА</button>
+    </header>
+
+    <!-- ВХОД -->
+    <div id="auth-section" class="card p-6 rounded-[24px]">
+        <h2 class="text-xl font-bold mb-4 uppercase text-zinc-400 text-sm">Авторизация банка</h2>
+        <input id="auth-code" type="text" placeholder="Код входа" class="w-full p-4 rounded-xl mb-3">
+        <input id="auth-pin" type="password" placeholder="Пин-код" class="w-full p-4 rounded-xl mb-4">
+        <button onclick="linkBank()" class="w-full kiwi-btn py-4 rounded-xl font-black uppercase text-xs tracking-widest">Подключить счет</button>
+    </div>
+
+    <!-- ВИТРИНА -->
+    <div id="market-section" class="hidden">
+        <h2 class="text-xs font-black uppercase text-zinc-500 mb-4 tracking-tighter">Доступные регионы</h2>
+        <div id="country-list" class="grid grid-cols-2 gap-2"></div>
+
+        <h2 class="text-xs font-black uppercase text-zinc-500 mt-10 mb-4 tracking-tighter">Ваши активные номера</h2>
+        <div id="my-numbers" class="space-y-3"></div>
     </div>
 </div>
 
-<div id="app" style="display:none;">
-    <div class="header">
-        <div class="stat"><b>БАНК</b> <span id="bal-bank">0</span> ₽</div>
-        <div class="stat" style="border-color:#00ccff;"><b>МАРКЕТ</b> <span id="bal-market" style="color:#00ccff;">0</span> ₽</div>
+<!-- МОДАЛКА ВЫБОРА НОМЕРА -->
+<div id="purchase-modal" class="modal fixed inset-0 z-50 flex items-center justify-center p-6 hidden">
+    <div class="bg-zinc-900 w-full max-w-xs rounded-[32px] p-6 border border-white/10">
+        <p id="modal-country" class="text-orange-500 text-[10px] font-black uppercase text-center mb-1">СТРАНА</p>
+        <h3 class="text-center font-bold mb-6">Выберите номер</h3>
+        
+        <div id="number-options" class="space-y-2 mb-8"></div>
+
+        <div class="flex gap-3">
+            <button onclick="closeModal()" class="flex-1 py-3 bg-zinc-800 rounded-xl text-xs font-bold uppercase text-zinc-400">Отмена</button>
+            <button id="buy-btn" onclick="confirmPurchase()" class="flex-1 py-3 kiwi-btn rounded-xl text-xs font-bold uppercase">Купить</button>
+        </div>
     </div>
-    <div id="screen"></div>
-    <nav class="nav">
-        <button class="n-btn active" onclick="tab('work', this)">РАБОТА</button>
-        <button class="n-btn" onclick="tab('me', this)">ПРОФИЛЬ</button>
-    </nav>
 </div>
 
 <script>
-const { Client, Databases, Query, ID } = Appwrite;
+const DB_ID = 'bank_db';
+const COLL_USERS = 'users';
+const COLL_PURCHASED = 'purchased_numbers';
+
+const { Client, Databases, ID, Query } = Appwrite;
 const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
-const db = new Databases(client);
-const DB_ID = 'bank_db', USERS = 'users';
+const databases = new Databases(client);
 
-let user = null;
-let clicks = 0;
-let isSyncing = false;
+let currentUser = null;
+let selectedRegion = null;
+let selectedNumber = null;
+let saveTimeout = null; // Для оптимизации запросов
 
-function getNum(v) { return isNaN(Number(v)) ? 0 : Number(v); }
+const countries = [
+    { name: 'Россия', code: '+7', price: 500 },
+    { name: 'Украина', code: '+380', price: 500 },
+    { name: 'США', code: '+1', price: 5500 },
+    { name: 'Бельгия', code: '+32', price: 2100 },
+    { name: 'Нидерланды', code: '+31', price: 1500 },
+    { name: 'Словакия', code: '+421', price: 850 },
+    { name: 'Германия', code: '+49', price: 3200 },
+    { name: 'Франция', code: '+33', price: 2800 }
+];
 
-async function login() {
-    const c = document.getElementById('cid').value, p = document.getElementById('pin').value;
+async function linkBank() {
+    const code = document.getElementById('auth-code').value;
+    const pin = document.getElementById('auth-pin').value;
     try {
-        const res = await db.listDocuments(DB_ID, USERS, [Query.equal('personalCode', c)]);
-        if(res.documents.length > 0) {
-            user = res.documents[0];
-            if(String(user.pin) !== p) return alert("PIN неверный");
-        } else {
-            user = await db.createDocument(DB_ID, USERS, ID.unique(), { 
-                personalCode: c, pin: p, balance: 1000, marketBalance: 0 
-            });
+        const res = await databases.listDocuments(DB_ID, COLL_USERS, [
+            Query.equal('personalCode', code), Query.equal('pin', pin)
+        ]);
+        if (res.documents.length > 0) {
+            currentUser = res.documents[0];
+            initMarket();
+        } else alert("Ошибка данных банка");
+    } catch (e) { alert("Ошибка соединения"); }
+}
+
+function initMarket() {
+    document.getElementById('auth-section').classList.add('hidden');
+    document.getElementById('market-section').classList.remove('hidden');
+    document.getElementById('balance-tag').classList.remove('hidden');
+    updateBalanceDisplay();
+
+    const list = document.getElementById('country-list');
+    list.innerHTML = countries.map(c => `
+        <div class="card p-4 rounded-2xl flex flex-col items-center justify-center text-center" onclick="openPurchase('${c.name}')">
+            <span class="text-[10px] text-zinc-500 uppercase font-black mb-1">${c.name}</span>
+            <span class="text-orange-500 font-black italic text-lg">${c.price} ₽</span>
+        </div>
+    `).join('');
+    loadMyNumbers();
+}
+
+function updateBalanceDisplay() {
+    document.getElementById('user-balance').innerText = currentUser.balance.toLocaleString();
+}
+
+function openPurchase(countryName) {
+    selectedRegion = countries.find(c => c.name === countryName);
+    document.getElementById('modal-country').innerText = selectedRegion.name;
+    const optionsCont = document.getElementById('number-options');
+    optionsCont.innerHTML = '';
+
+    for(let i=0; i<5; i++) {
+        const num = selectedRegion.code + Math.floor(Math.random() * 900000000 + 100000000);
+        const div = document.createElement('div');
+        div.className = "p-3 rounded-xl bg-black border border-white/5 text-center font-mono text-sm cursor-pointer hover:border-orange-500 transition";
+        div.innerText = num;
+        div.onclick = () => {
+            document.querySelectorAll('#number-options div').forEach(d => d.style.borderColor = 'rgba(255,255,255,0.05)');
+            div.style.borderColor = '#ff8c00';
+            selectedNumber = num;
+        };
+        optionsCont.appendChild(div);
+    }
+    document.getElementById('purchase-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('purchase-modal').classList.add('hidden');
+    selectedNumber = null;
+}
+
+// ОСНОВНАЯ ФУНКЦИЯ С ОПТИМИЗАЦИЕЙ ЗАПРОСОВ
+async function confirmPurchase() {
+    if (!selectedNumber) return alert("Выберите номер");
+    if (currentUser.balance < selectedRegion.price) return alert("Недостаточно средств");
+
+    // Блокируем кнопку на время покупки
+    const btn = document.getElementById('buy-btn');
+    btn.disabled = true;
+    btn.innerText = "ПОДОЖДИТЕ...";
+    document.getElementById('sync-status').classList.remove('hidden');
+
+    try {
+        const smsCode = Math.floor(100000 + Math.random() * 899999).toString();
+        
+        // 1. Списываем баланс локально
+        currentUser.balance -= selectedRegion.price;
+        updateBalanceDisplay();
+
+        // 2. Обновляем базу данных (Баланс)
+        await databases.updateDocument(DB_ID, COLL_USERS, currentUser.$id, {
+            balance: currentUser.balance
+        });
+
+        // 3. Создаем запись о номере
+        await databases.createDocument(DB_ID, COLL_PURCHASED, ID.unique(), {
+            ownerId: currentUser.$id,
+            number: selectedNumber,
+            country: selectedRegion.name,
+            code: smsCode
+        });
+
+        closeModal();
+        loadMyNumbers();
+        console.log("Транзакция завершена успешно");
+    } catch (e) {
+        alert("Ошибка синхронизации. Проверьте интернет.");
+        console.error(e);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "КУПИТЬ";
+        document.getElementById('sync-status').classList.add('hidden');
+    }
+}
+
+async function loadMyNumbers() {
+    const list = document.getElementById('my-numbers');
+    try {
+        const res = await databases.listDocuments(DB_ID, COLL_PURCHASED, [
+            Query.equal('ownerId', currentUser.$id)
+        ]);
+        
+        if (res.documents.length === 0) {
+            list.innerHTML = '<p class="text-zinc-600 text-center py-4 text-xs italic">Номеров пока нет</p>';
+            return;
         }
-        document.getElementById('auth').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        updateUI();
-        tab('work', document.querySelector('.n-btn'));
-    } catch(e) { alert("Ошибка входа: " + e.message); }
+
+        list.innerHTML = res.documents.reverse().map(item => `
+            <div class="card p-4 rounded-2xl relative border-l-2 border-orange-500">
+                <button onclick="deleteNum('${item.$id}')" class="absolute top-4 right-4 text-zinc-600 text-[8px] font-black uppercase hover:text-red-500">Удалить</button>
+                <p class="text-[9px] text-zinc-500 font-black uppercase">${item.country}</p>
+                <p class="text-lg font-mono text-white">${item.number}</p>
+                <div class="mt-2 pt-2 border-t border-white/5 flex justify-between items-center">
+                    <span class="text-[9px] text-zinc-500 uppercase tracking-tighter">Код подтверждения:</span>
+                    <span class="font-black text-orange-500 tracking-[0.3em]">${item.code}</span>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {}
 }
 
-function updateUI() {
-    if(!user) return;
-    document.getElementById('bal-bank').innerText = getNum(user.balance).toLocaleString();
-    document.getElementById('bal-market').innerText = getNum(user.marketBalance).toLocaleString();
-}
-
-async function tab(name, btn) {
-    const s = document.getElementById('screen');
-    if(btn) { document.querySelectorAll('.n-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
-
-    if(name === 'work') {
-        s.innerHTML = `
-            <p style="color:gray;">ЦЕЛЬ: 15 КЛИКОВ</p>
-            <h1 style="font-size:4em;margin:10px 0;color:var(--gold);" id="cc">${clicks}</h1>
-            <button class="mine-btn" onclick="doWork()">GOLD</button>
-            <p id="st" style="margin-top:20px;color:gray;"></p>`;
-    }
-
-    if(name === 'me') {
-        const fresh = await db.getDocument(DB_ID, USERS, user.$id);
-        user.marketBalance = getNum(fresh.marketBalance);
-        updateUI();
-        s.innerHTML = `
-            <div style="background:#111;padding:30px;border-radius:25px;border:1px solid #222;width:85%;text-align:center;">
-                <p style="color:gray;font-size:0.8em;margin:0;">СЧЕТ МАРКЕТА</p>
-                <h1 style="font-size:3em;margin:10px 0;color:#00ccff;">${getNum(user.marketBalance).toLocaleString()} ₽</h1>
-                <button class="btn btn-gold" onclick="openWithdraw()">ВЫВЕСТИ В БАНК</button>
-            </div>`;
-    }
-}
-
-async function doWork() {
-    clicks++;
-    document.getElementById('cc').innerText = clicks;
-    if(clicks % 15 === 0 && !isSyncing) {
-        isSyncing = true;
-        document.getElementById('st').innerText = "Синхронизация...";
-        try {
-            const fresh = await db.getDocument(DB_ID, USERS, user.$id);
-            const newM = getNum(fresh.marketBalance) + 50;
-            await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: newM });
-            user.marketBalance = newM;
-            updateUI();
-            document.getElementById('st').innerText = "Зачислено +50 ₽";
-        } catch(e) { document.getElementById('st').innerText = "Ошибка: " + e.message; }
-        finally { isSyncing = false; }
-    }
-}
-
-function openWithdraw() {
-    const m = getNum(user.marketBalance);
-    if(m < 500) return alert("Нужно минимум 500 ₽");
-    const net = Math.floor(m * 0.1);
-    document.getElementById('m-sum').innerText = m + " ₽";
-    document.getElementById('m-net').innerText = net + " ₽";
-    document.getElementById('modal').style.display = 'flex';
-}
-
-function closeModal() { document.getElementById('modal').style.display = 'none'; }
-
-async function confirmWithdraw() {
+async function deleteNum(id) {
+    if(!confirm("Удалить номер?")) return;
     try {
-        const fresh = await db.getDocument(DB_ID, USERS, user.$id);
-        const m = getNum(fresh.marketBalance);
-        if(m < 500) return alert("Мало денег");
-        const payout = Math.floor(m * 0.1);
-        const newB = getNum(fresh.balance) + payout;
-        await db.updateDocument(DB_ID, USERS, user.$id, { balance: newB, marketBalance: 0 });
-        user.balance = newB; user.marketBalance = 0;
-        updateUI(); closeModal(); tab('me');
-        alert("Выведено: " + payout + " ₽");
-    } catch(e) { alert(e.message); }
+        document.getElementById('sync-status').classList.remove('hidden');
+        await databases.deleteDocument(DB_ID, COLL_PURCHASED, id);
+        loadMyNumbers();
+    } catch (e) {
+        alert("Ошибка удаления");
+    } finally {
+        document.getElementById('sync-status').classList.add('hidden');
+    }
 }
 </script>
 </body>
