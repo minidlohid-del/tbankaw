@@ -90,27 +90,18 @@
         <div id="screen-more" class="screen-container p-6 hidden">
             <h2 class="text-2xl font-black italic mb-6 text-orange-500 uppercase text-center">Профиль</h2>
             <div class="space-y-4">
-                <!-- БЛОК СМЕНЫ НОМЕРА -->
                 <div class="bg-zinc-900/80 p-4 rounded-2xl border border-orange-500/20">
-                    <p class="text-[10px] text-orange-500 uppercase font-black mb-2 italic">Смена номера (SMS-Service)</p>
-                    <input id="new-phone" type="text" placeholder="Новый номер (+7...)" class="w-full p-3 rounded-lg text-sm bg-black mb-2">
-                    <input id="new-phone-code" type="text" placeholder="Код подтверждения (6 цифр)" class="w-full p-3 rounded-lg text-sm bg-black mb-3">
-                    <button onclick="changePhoneNumber()" class="w-full py-2 bg-orange-500 text-white rounded-lg font-bold uppercase text-[9px]">Подтвердить смену</button>
+                    <p class="text-[10px] text-orange-500 uppercase font-black mb-2 italic">SMS-Service</p>
+                    <input id="new-phone" type="text" placeholder="Новый номер" class="w-full p-3 rounded-lg text-sm bg-black mb-2">
+                    <input id="new-phone-code" type="text" placeholder="Код (6 цифр)" class="w-full p-3 rounded-lg text-sm bg-black mb-3">
+                    <button onclick="changePhoneNumber()" class="w-full py-2 bg-orange-500 text-white rounded-lg font-bold uppercase text-[9px]">Применить номер</button>
                 </div>
-
                 <div class="bg-zinc-900/80 p-4 rounded-2xl border border-white/5">
                     <p class="text-[10px] text-zinc-500 uppercase mb-2">Отображаемое имя</p>
                     <input id="edit-name" type="text" class="w-full p-3 rounded-lg text-sm bg-black">
                 </div>
-                <div class="bg-zinc-900/80 p-4 rounded-2xl border border-white/5">
-                    <p class="text-[10px] text-zinc-500 uppercase mb-2">Изменить ПИН-код</p>
-                    <input id="edit-pin" type="password" maxlength="4" class="w-full p-3 rounded-lg text-sm bg-black">
-                </div>
-                <button onclick="updateProfile()" class="w-full py-4 border border-orange-500/30 text-orange-500 rounded-2xl font-bold uppercase text-[10px]">Применить изменения</button>
-                <div class="pt-10 space-y-3">
-                    <button onclick="logout()" class="w-full py-4 bg-zinc-900/80 text-white rounded-2xl font-bold uppercase text-[10px]">Выйти из аккаунта</button>
-                    <button onclick="deleteAccount()" class="w-full py-4 bg-red-900/20 text-red-500 rounded-2xl font-bold uppercase text-[10px]">Удалить счет KiwiBank</button>
-                </div>
+                <button onclick="updateProfile()" class="w-full py-4 border border-orange-500/30 text-orange-500 rounded-2xl font-bold uppercase text-[10px]">Сохранить</button>
+                <button onclick="logout()" class="w-full py-4 bg-zinc-900/80 text-white rounded-2xl font-bold uppercase text-[10px]">Выйти</button>
             </div>
         </div>
 
@@ -138,9 +129,7 @@
 <script>
 const DB_ID = 'bank_db'; 
 const COLL_ID = 'users'; 
-const COLL_PURCHASED = 'purchased_numbers'; // Наша новая таблица
 const { Client, Databases, ID, Query } = Appwrite;
-
 const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
 const databases = new Databases(client);
 let currentUser = null;
@@ -157,33 +146,11 @@ function showScreen(screenId, btn) {
     btn.classList.add('active-tab');
 }
 
-async function register() {
-    const name = document.getElementById('reg-name').value.trim();
-    const pin = document.getElementById('reg-pin').value.trim();
-    if (!name || pin.length !== 4) return alert("Заполните данные (ПИН 4 цифры)");
-
-    try {
-        const personalCode = Math.floor(100 + Math.random() * 899).toString();
-        const cardNum = `2202 ${Math.floor(1000 + Math.random()*8999)} ${Math.floor(1000 + Math.random()*8999)} ${Math.floor(1000 + Math.random()*8999)}`;
-        const cardDate = `${String(Math.floor(1 + Math.random()*12)).padStart(2, '0')}/${Math.floor(28+Math.random()*4)}`;
-
-        await databases.createDocument(DB_ID, COLL_ID, ID.unique(), {
-            name: name, pin: pin, personalCode: personalCode, balance: 1000,
-            phone: "+79" + Math.floor(100000000 + Math.random() * 899999999),
-            cardNumber: cardNum, cardDate: cardDate, history: "[]"
-        });
-        alert(`KiwiBank приветствует вас! Код: ${personalCode}`);
-        location.reload();
-    } catch (e) { alert("Ошибка регистрации"); }
-}
-
 async function login() {
     const code = document.getElementById('login-code').value.trim();
     const pin = document.getElementById('login-pin').value.trim();
     try {
-        const res = await databases.listDocuments(DB_ID, COLL_ID, [
-            Query.equal('personalCode', code), Query.equal('pin', pin)
-        ]);
+        const res = await databases.listDocuments(DB_ID, COLL_ID, [Query.equal('personalCode', code), Query.equal('pin', pin)]);
         if (res.documents.length > 0) {
             currentUser = res.documents[0];
             renderInterface();
@@ -205,43 +172,11 @@ function renderInterface() {
     updateHistoryUI();
 }
 
-// ФУНКЦИЯ ПРОВЕРКИ И СМЕНЫ НОМЕРА
-async function changePhoneNumber() {
-    const newNum = document.getElementById('new-phone').value.trim();
-    const smsCode = document.getElementById('new-phone-code').value.trim();
-
-    if (!newNum || smsCode.length < 6) return alert("Введите номер и 6-значный код");
-
-    try {
-        // Проверяем, есть ли такой купленный номер с таким кодом в таблице purchased_numbers
-        const check = await databases.listDocuments(DB_ID, COLL_PURCHASED, [
-            Query.equal('number', newNum),
-            Query.equal('code', smsCode)
-        ]);
-
-        if (check.documents.length > 0) {
-            // Если номер и код совпали — обновляем профиль пользователя
-            await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, {
-                phone: newNum
-            });
-            alert("Номер успешно изменен!");
-            location.reload();
-        } else {
-            alert("Неверный номер или код подтверждения!");
-        }
-    } catch (e) {
-        alert("Ошибка при проверке данных");
-    }
-}
-
 function updateHistoryUI() {
     const list = document.getElementById('history-list');
     let history = [];
-    try {
-        const raw = currentUser.history;
-        if (raw && raw.startsWith('[')) history = JSON.parse(raw);
-    } catch(e) { history = []; }
-
+    try { if (currentUser.history && currentUser.history.startsWith('[')) history = JSON.parse(currentUser.history); } catch(e) {}
+    
     if (history.length === 0) {
         list.innerHTML = '<div class="text-[10px] text-zinc-500 text-center py-10 italic">История пуста</div>';
         return;
@@ -268,9 +203,7 @@ function updateHistoryUI() {
 async function sendMoney() {
     const target = document.getElementById('pay-target').value.trim();
     const amount = parseInt(document.getElementById('pay-amount').value);
-    
-    if (!target || isNaN(amount) || amount <= 0) return alert("Введите данные");
-    if (amount > currentUser.balance) return alert("Недостаточно средств");
+    if (!target || isNaN(amount) || amount <= 0 || amount > currentUser.balance) return alert("Ошибка данных");
 
     try {
         let res = await databases.listDocuments(DB_ID, COLL_ID, [Query.equal('cardNumber', target)]);
@@ -280,63 +213,21 @@ async function sendMoney() {
             receiver = res.documents[0];
         }
 
-        if (!receiver) return alert("Получатель не найден");
-        if (receiver.$id === currentUser.$id) return alert("Нельзя перевести себе");
+        if (!receiver || receiver.$id === currentUser.$id) return alert("Ошибка получателя");
 
         const dateStr = new Date().toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
 
-        let myHistory = [];
-        try { if (currentUser.history.startsWith('[')) myHistory = JSON.parse(currentUser.history); } catch(e) {}
-        myHistory.push({ type: 'sent', to: receiver.name, amount: amount, date: dateStr });
-        if (myHistory.length > 15) myHistory.shift();
-
-        let hisHistory = [];
-        try { if (receiver.history.startsWith('[')) hisHistory = JSON.parse(receiver.history); } catch(e) {}
-        hisHistory.push({ type: 'received', from: currentUser.name, amount: amount, date: dateStr });
-        if (hisHistory.length > 15) hisHistory.shift();
-
-        await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, { 
-            balance: currentUser.balance - amount,
-            history: JSON.stringify(myHistory)
-        });
-        await databases.updateDocument(DB_ID, COLL_ID, receiver.$id, { 
-            balance: receiver.balance + amount,
-            history: JSON.stringify(hisHistory)
-        });
+        let myH = JSON.parse(currentUser.history || "[]");
+        myH.push({ type: 'sent', to: receiver.name, amount: amount, date: dateStr });
         
-        currentUser.balance -= amount;
-        currentUser.history = JSON.stringify(myHistory);
+        let hisH = JSON.parse(receiver.history || "[]");
+        hisH.push({ type: 'received', from: currentUser.name, amount: amount, date: dateStr });
+
+        await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, { balance: currentUser.balance - amount, history: JSON.stringify(myH) });
+        await databases.updateDocument(DB_ID, COLL_ID, receiver.$id, { balance: receiver.balance + amount, history: JSON.stringify(hisH) });
         
-        document.getElementById('balance-disp').innerText = currentUser.balance.toLocaleString() + " ₽";
-        updateHistoryUI();
-        openReceipt(receiver.name, amount);
+        location.reload();
     } catch (e) { alert("Ошибка перевода"); }
-}
-
-async function updateProfile() {
-    const newName = document.getElementById('edit-name').value.trim();
-    const newPin = document.getElementById('edit-pin').value.trim();
-    const data = { name: newName };
-    if (newPin.length === 4) data.pin = newPin;
-    try {
-        await databases.updateDocument(DB_ID, COLL_ID, currentUser.$id, data);
-        alert("Обновлено");
-        location.reload();
-    } catch (e) { alert("Ошибка"); }
-}
-
-async function deleteAccount() {
-    if(!confirm("Удалить счет?")) return;
-    try {
-        await databases.deleteDocument(DB_ID, COLL_ID, currentUser.$id);
-        location.reload();
-    } catch (e) { alert("Ошибка"); }
-}
-
-function openReceipt(to, amount) {
-    document.getElementById('rec-to').innerText = to;
-    document.getElementById('rec-amount').innerText = amount.toLocaleString() + " ₽";
-    document.getElementById('receipt-modal').style.display = 'flex';
 }
 
 function logout() { location.reload(); }
