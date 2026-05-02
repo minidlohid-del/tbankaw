@@ -3,123 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOLD V3 | OFFICIAL MARKET</title>
+    <title>GOLD V3 | MARKET</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
     <style>
-        :root { 
-            --gold: #ffd700; 
-            --gold-glow: #ffae00;
-            --bg: #050505; 
-            --card: #121212; 
-        }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { 
-            font-family: 'Segoe UI', Roboto, sans-serif; 
-            background: var(--bg); 
-            color: white; 
-            margin: 0; 
-            user-select: none;
-            overflow: hidden;
-        }
-
-        /* Хедер с балансами по углам */
-        .header { 
-            position: fixed; top: 0; width: 100%; 
-            padding: 15px 20px; 
-            display: flex; justify-content: space-between; align-items: center;
-            z-index: 1000;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
-        }
-        .stat { 
-            background: rgba(20,20,20,0.8); 
-            border: 1px solid var(--gold); 
-            padding: 8px 15px; 
-            border-radius: 12px; 
-            font-size: 0.85em;
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
-        }
-        .stat b { color: var(--gold); display: block; font-size: 0.7em; text-transform: uppercase; opacity: 0.7; }
-        .stat span { font-weight: bold; font-size: 1.1em; }
-        #bal-market-box { border-color: #00ccff; box-shadow: 0 0 10px rgba(0, 204, 255, 0.1); }
-        #bal-market-box b { color: #00ccff; }
-
-        /* Навигация */
+        :root { --gold: #ffd700; --bg: #050505; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; user-select: none; overflow: hidden; }
+        
+        .header { position: fixed; top: 0; width: 100%; padding: 15px 20px; display: flex; justify-content: space-between; z-index: 1000; }
+        .stat { background: #111; border: 1px solid var(--gold); padding: 8px 15px; border-radius: 12px; font-size: 0.9em; box-shadow: 0 0 10px rgba(255,215,0,0.1); }
+        .stat b { color: var(--gold); display: block; font-size: 0.7em; }
+        
         .nav { position: fixed; bottom: 0; width: 100%; background: #0a0a0a; display: flex; border-top: 1px solid #222; }
-        .n-btn { flex: 1; padding: 18px; background: none; border: none; color: #444; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .n-btn.active { color: var(--gold); background: rgba(255,215,0,0.05); }
+        .n-btn { flex: 1; padding: 20px; background: none; border: none; color: #444; font-weight: bold; cursor: pointer; }
+        .n-btn.active { color: var(--gold); }
 
-        /* Контент */
-        #screen { height: 100vh; padding-top: 100px; padding-bottom: 80px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
+        #screen { height: 100vh; padding-top: 100px; display: flex; flex-direction: column; align-items: center; }
         
-        /* Кнопка кликера */
-        .click-area { margin-top: 40px; text-align: center; }
         .mine-btn { 
-            width: 200px; height: 200px; border-radius: 50%; 
-            border: 6px solid var(--gold); 
-            background: radial-gradient(circle, #1a1a1a, #000);
-            color: var(--gold); font-size: 2.5em; font-weight: bold;
-            cursor: pointer; transition: 0.1s;
-            box-shadow: 0 0 20px rgba(255,215,0,0.2);
-            display: flex; align-items: center; justify-content: center;
+            width: 220px; height: 220px; border-radius: 50%; border: 6px solid var(--gold); 
+            background: radial-gradient(circle, #222, #000); color: var(--gold); font-size: 3em; font-weight: bold;
+            cursor: pointer; transition: 0.1s; box-shadow: 0 0 20px rgba(255,215,0,0.2);
         }
-        .mine-btn:active { transform: scale(0.92); box-shadow: 0 0 40px var(--gold-glow); }
-        
-        /* Модальное окно */
-        .modal-overlay { 
-            position: fixed; inset: 0; background: rgba(0,0,0,0.85); 
-            display: none; align-items: center; justify-content: center; z-index: 5000; 
-            backdrop-filter: blur(5px);
-        }
-        .modal { 
-            background: #111; border: 1px solid var(--gold); 
-            padding: 25px; border-radius: 20px; width: 90%; max-width: 320px; text-align: center;
-        }
-        .m-line { display: flex; justify-content: space-between; margin: 10px 0; font-size: 0.9em; }
+        .mine-btn:active { transform: scale(0.9); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 5000; }
+        .modal { background: #111; border: 1px solid var(--gold); padding: 25px; border-radius: 20px; width: 90%; max-width: 320px; text-align: center; }
         .btn { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-gold { background: var(--gold); color: black; }
-        .btn-close { background: #222; color: #777; }
 
-        /* Авторизация */
         #auth { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .inpt { background: #111; border: 1px solid #222; color: white; padding: 15px; width: 280px; margin: 5px; border-radius: 12px; text-align: center; font-size: 1em; }
-        .inpt:focus { border-color: var(--gold); }
-        
-        .loading-dots::after { content: '...'; animation: dots 1.5s infinite; }
-        @keyframes dots { 0%, 20% { content: '.'; } 40% { content: '..'; } 60% { content: '...'; } }
+        .inpt { background: #111; border: 1px solid #222; color: white; padding: 15px; width: 280px; margin: 5px; border-radius: 10px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="auth">
-    <h1 style="color:var(--gold); letter-spacing:10px; margin-bottom:40px;">GOLD V3</h1>
+    <h1 style="color:var(--gold); letter-spacing:8px;">GOLD V3</h1>
     <input type="text" id="cid" class="inpt" placeholder="ID КАРТЫ">
     <input type="password" id="pin" class="inpt" placeholder="PIN">
-    <button class="btn btn-gold" style="width:280px; margin-top:20px;" onclick="login()">ВХОД</button>
+    <button class="btn btn-gold" style="width:280px;" onclick="login()">ВХОД</button>
 </div>
 
 <div class="modal-overlay" id="modal">
     <div class="modal">
-        <h3 style="color:var(--gold); margin-top:0;">ВЫВОД СРЕДСТВ</h3>
-        <div style="background:#000; padding:15px; border-radius:12px; margin-bottom:20px;">
-            <div class="m-line"><span>Сумма:</span> <span id="m-sum">0 ₽</span></div>
-            <div class="m-line"><span>Комиссия:</span> <span style="color:#ff3333;">90%</span></div>
-            <div class="m-line" style="border-top:1px solid #222; padding-top:10px; margin-top:10px; font-weight:bold;">
-                <span>К зачислению:</span> <span id="m-net" style="color:var(--gold);">0 ₽</span>
-            </div>
+        <h3 style="color:var(--gold);">ВЫВОД СРЕДСТВ</h3>
+        <div style="background:#000; padding:15px; border-radius:12px; text-align: left;">
+            <div style="display:flex;justify-content:space-between"><span>Сумма:</span> <span id="m-sum">0 ₽</span></div>
+            <div style="display:flex;justify-content:space-between;color:red;"><span>Комиссия:</span> <span>90%</span></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid #222;margin-top:10px;padding-top:10px;"><span>К зачислению:</span> <span id="m-net" style="color:var(--gold);">0 ₽</span></div>
         </div>
         <button class="btn btn-gold" id="confirm-btn" onclick="confirmWithdraw()">ПОДТВЕРДИТЬ</button>
-        <button class="btn btn-close" onclick="closeModal()">ОТМЕНА</button>
+        <button class="btn" style="background:#222;color:gray;" onclick="closeModal()">ОТМЕНА</button>
     </div>
 </div>
 
 <div id="app" style="display:none;">
     <div class="header">
-        <div class="stat" id="bal-bank-box"><b>БАНК</b> <span id="bal-bank">0</span> ₽</div>
-        <div class="stat" id="bal-market-box"><b>МАРКЕТ</b> <span id="bal-market">0</span> ₽</div>
+        <div class="stat"><b>БАНК</b> <span id="bal-bank">0</span> ₽</div>
+        <div class="stat" style="border-color:#00ccff;"><b>МАРКЕТ</b> <span id="bal-market" style="color:#00ccff;">0</span> ₽</div>
     </div>
-
     <div id="screen"></div>
-
     <nav class="nav">
         <button class="n-btn active" onclick="tab('work', this)">РАБОТА</button>
         <button class="n-btn" onclick="tab('me', this)">ПРОФИЛЬ</button>
@@ -128,27 +71,24 @@
 
 <script>
 const { Client, Databases, Query, ID } = Appwrite;
-const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9'); //
+// Все ID взяты строго с твоих скриншотов
+const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
 const db = new Databases(client);
 const DB_ID = 'bank_db', USERS = 'users';
 
 let user = null;
-let localClicks = 0;
+let clicks = 0;
 let isSyncing = false;
 
 function getNum(v) { return isNaN(Number(v)) ? 0 : Number(v); }
 
-// ─── АВТОРИЗАЦИЯ ───
 async function login() {
-    const c = document.getElementById('cid').value.trim();
-    const p = document.getElementById('pin').value.trim();
-    if(!c || !p) return alert("Заполните поля!");
-
+    const c = document.getElementById('cid').value, p = document.getElementById('pin').value;
     try {
         const res = await db.listDocuments(DB_ID, USERS, [Query.equal('personalCode', c)]);
         if(res.documents.length > 0) {
             user = res.documents[0];
-            if(String(user.pin) !== p) return alert("Неверный PIN!");
+            if(String(user.pin) !== p) return alert("PIN неверный");
         } else {
             user = await db.createDocument(DB_ID, USERS, ID.unique(), { 
                 personalCode: c, pin: p, balance: 1000, marketBalance: 0 
@@ -167,119 +107,72 @@ function updateUI() {
     document.getElementById('bal-market').innerText = getNum(user.marketBalance).toLocaleString();
 }
 
-// ─── ВКЛАДКИ ───
 async function tab(name, btn) {
     const s = document.getElementById('screen');
     if(btn) { document.querySelectorAll('.n-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
 
     if(name === 'work') {
         s.innerHTML = `
-            <div class="click-area">
-                <p style="color:#555; letter-spacing:1px; margin-bottom:5px;">ЦЕЛЬ: 15 КЛИКОВ</p>
-                <h1 style="font-size:4em; margin:0 0 20px 0; color:var(--gold); text-shadow: 0 0 20px rgba(255,215,0,0.3);" id="cc">${localClicks}</h1>
-                <button class="mine-btn" onclick="doWork()">GOLD</button>
-                <p id="sync-status" style="margin-top:20px; font-size:0.8em; color:gray; height:20px;"></p>
-            </div>`;
+            <p style="color:gray;">ЦЕЛЬ: 15 КЛИКОВ</p>
+            <h1 style="font-size:4em;margin:10px 0;color:var(--gold);" id="cc">${clicks}</h1>
+            <button class="mine-btn" onclick="doWork()">GOLD</button>
+            <p id="st" style="margin-top:20px;color:gray;"></p>`;
     }
 
     if(name === 'me') {
-        s.innerHTML = `<p class="loading-dots" style="color:var(--gold)">Загрузка данных</p>`;
-        try {
-            const fresh = await db.getDocument(DB_ID, USERS, user.$id);
-            user.marketBalance = getNum(fresh.marketBalance);
-            user.balance = getNum(fresh.balance);
-            updateUI();
-        } catch(e) {}
-
+        const fresh = await db.getDocument(DB_ID, USERS, user.$id);
+        user.marketBalance = getNum(fresh.marketBalance);
+        updateUI();
         s.innerHTML = `
-            <div style="width:90%; max-width:350px;">
-                <div style="background:var(--card); padding:30px; border-radius:24px; border:1px solid #222; text-align:center;">
-                    <p style="color:gray; font-size:0.8em; margin:0;">МАРКЕТ БАЛАНС</p>
-                    <h1 style="font-size:3em; margin:10px 0; color:#00ccff;">${getNum(user.marketBalance).toLocaleString()} ₽</h1>
-                    <button class="btn btn-gold" onclick="openWithdraw()">ВЫВЕСТИ В БАНК</button>
-                </div>
-                <div style="margin-top:20px; text-align:center; color:#333; font-size:0.7em;">
-                    ACCOUNT ID: ${user.personalCode}
-                </div>
+            <div style="background:#111;padding:30px;border-radius:25px;border:1px solid #222;width:85%;text-align:center;">
+                <p style="color:gray;font-size:0.8em;margin:0;">СЧЕТ МАРКЕТА</p>
+                <h1 style="font-size:3em;margin:10px 0;color:#00ccff;">${getNum(user.marketBalance).toLocaleString()} ₽</h1>
+                <button class="btn btn-gold" onclick="openWithdraw()">ВЫВЕСТИ В БАНК</button>
             </div>`;
     }
 }
 
-// ─── КЛИКЕР ───
 async function doWork() {
-    localClicks++;
-    const cc = document.getElementById('cc');
-    if(cc) cc.innerText = localClicks;
-
-    if(localClicks % 15 === 0 && !isSyncing) {
+    clicks++;
+    document.getElementById('cc').innerText = clicks;
+    if(clicks % 15 === 0 && !isSyncing) {
         isSyncing = true;
-        const status = document.getElementById('sync-status');
-        if(status) status.innerText = "Синхронизация...";
-
+        document.getElementById('st').innerText = "Синхронизация...";
         try {
             const fresh = await db.getDocument(DB_ID, USERS, user.$id);
-            const newMarket = getNum(fresh.marketBalance) + 50;
-            
-            await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: newMarket });
-            
-            user.marketBalance = newMarket;
+            const newM = getNum(fresh.marketBalance) + 50;
+            await db.updateDocument(DB_ID, USERS, user.$id, { marketBalance: newM });
+            user.marketBalance = newM;
             updateUI();
-            if(status) status.innerText = "Зачислено +50 ₽";
-            setTimeout(() => { if(status) status.innerText = ""; }, 1500);
-        } catch(e) {
-            console.error(e);
-            if(status) status.innerText = "Ошибка сети!";
-        } finally {
-            isSyncing = false;
-        }
+            document.getElementById('st').innerText = "Зачислено +50 ₽";
+        } catch(e) { document.getElementById('st').innerText = "Ошибка: " + e.message; }
+        finally { isSyncing = false; }
     }
 }
 
-// ─── ВЫВОД ───
 function openWithdraw() {
-    const mBal = getNum(user.marketBalance);
-    if(mBal < 500) return alert(`Минимальный вывод: 500 ₽. У вас: ${mBal} ₽`); //
-
-    const payout = Math.floor(mBal * 0.1); // 10% идет пользователю (90% комиссия)
-    
-    document.getElementById('m-sum').innerText = mBal.toLocaleString() + " ₽";
-    document.getElementById('m-net').innerText = payout.toLocaleString() + " ₽";
+    const m = getNum(user.marketBalance);
+    if(m < 500) return alert("Нужно минимум 500 ₽");
+    const net = Math.floor(m * 0.1);
+    document.getElementById('m-sum').innerText = m + " ₽";
+    document.getElementById('m-net').innerText = net + " ₽";
     document.getElementById('modal').style.display = 'flex';
 }
 
 function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
 async function confirmWithdraw() {
-    const btn = document.getElementById('confirm-btn');
-    btn.disabled = true;
-    btn.innerText = "ОБРАБОТКА...";
-
     try {
         const fresh = await db.getDocument(DB_ID, USERS, user.$id);
-        const mBal = getNum(fresh.marketBalance);
-        
-        if(mBal < 500) throw new Error("Сумма меньше 500 ₽");
-
-        const payout = Math.floor(mBal * 0.1);
-        const newBank = getNum(fresh.balance) + payout;
-
-        await db.updateDocument(DB_ID, USERS, user.$id, { 
-            balance: newBank, 
-            marketBalance: 0 
-        });
-
-        user.balance = newBank;
-        user.marketBalance = 0;
-        updateUI();
-        closeModal();
-        tab('me');
-        alert(`Успех! В банк зачислено ${payout} ₽`);
-    } catch(e) {
-        alert("Ошибка: " + e.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "ПОДТВЕРДИТЬ";
-    }
+        const m = getNum(fresh.marketBalance);
+        if(m < 500) return alert("Мало денег");
+        const payout = Math.floor(m * 0.1);
+        const newB = getNum(fresh.balance) + payout;
+        await db.updateDocument(DB_ID, USERS, user.$id, { balance: newB, marketBalance: 0 });
+        user.balance = newB; user.marketBalance = 0;
+        updateUI(); closeModal(); tab('me');
+        alert("Выведено: " + payout + " ₽");
+    } catch(e) { alert(e.message); }
 }
 </script>
 </body>
