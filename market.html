@@ -9,7 +9,18 @@
         :root { --gold: #ffd700; --bg: #050505; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; user-select: none; overflow: hidden; }
         
-        .header { position: fixed; top: 0; width: 100%; padding: 15px 20px; display: flex; justify-content: space-between; z-index: 1000; }
+        /* ИСПРАВЛЕНО: Добавлены отступы по бокам, чтобы плашки не прилипали к краям */
+        .header { 
+            position: fixed; 
+            top: 0; 
+            width: 100%; 
+            padding: 15px 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            z-index: 1000; 
+            box-sizing: border-box; /* Чтобы padding не раздувал ширину */
+        }
+        
         .stat { background: #111; border: 1px solid var(--gold); padding: 8px 15px; border-radius: 12px; font-size: 0.9em; box-shadow: 0 0 10px rgba(255,215,0,0.1); }
         .stat b { color: var(--gold); display: block; font-size: 0.7em; }
         
@@ -71,7 +82,6 @@
 
 <script>
 const { Client, Databases, Query, ID } = Appwrite;
-// Все ID взяты строго с твоих скриншотов
 const client = new Client().setEndpoint('https://cloud.appwrite.io/v1').setProject('69f223f4002d7c30c1b9');
 const db = new Databases(client);
 const DB_ID = 'bank_db', USERS = 'users';
